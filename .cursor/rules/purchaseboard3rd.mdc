@@ -1,0 +1,34 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# PurchaseRequestBoard 元件規則
+
+本檔案 [purchaseboard3rd](mdc:purchaseboard3rd) 為 React JavaScript 檔案，匯出主元件 `PurchaseRequestBoard`。
+
+## 主要功能
+- 採購需求告示牌，支援需求新增、篩選（全部/待購買/已購買）、排序（最新/最舊）、留言、狀態切換（待購買/已購買/撤銷）、刪除。
+
+## 狀態管理
+- `requests`：需求清單，包含 id、標題、描述、提出者、狀態、日期、留言。
+- `showModal`：控制新增需求的 Modal 顯示。
+- `filter`：目前篩選狀態（all/pending/purchased）。
+- `sortBy`：排序方式（newest/oldest）。
+- `activeComments`：控制各需求留言區塊的展開狀態。
+- `newComment`：目前輸入的留言內容。
+- `formData`：新增需求表單資料。
+
+## 主要互動
+- 新增需求：點擊「新增需求」按鈕開啟 Modal，填寫表單後提交。
+- 篩選/排序：可切換需求顯示條件與順序。
+- 狀態切換：可將需求標記為已購買或撤銷。
+- 留言：可針對單一需求展開留言區並新增留言。
+- 刪除：可刪除單一需求。
+
+## UI 元素
+- 使用 Tailwind CSS 樣式。
+- 使用 lucide-react 圖示。
+
+## 匯出
+- 以 `export default PurchaseRequestBoard;` 匯出主元件。
