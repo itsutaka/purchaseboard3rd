@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw } from 'lucide-react';
+import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign } from 'lucide-react';
 
 const PurchaseRequestBoard = () => {
   const [requests, setRequests] = useState([
@@ -30,11 +30,28 @@ const PurchaseRequestBoard = () => {
       requester: '王小明',
       status: 'purchased',
       date: '2025-05-24',
+      purchaseAmount: 12000,
+      purchaseDate: '2025-05-26',
       comments: []
+    }
+  ]);
+  
+  const [purchaseRecords, setPurchaseRecords] = useState([
+    {
+      id: 3,
+      title: '投影機',
+      requester: '王小明',
+      purchaseAmount: 12000,
+      requestDate: '2025-05-24',
+      purchaseDate: '2025-05-26'
     }
   ]);
 
   const [showModal, setShowModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showRecordsModal, setShowRecordsModal] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [purchaseAmount, setPurchaseAmount] = useState('');
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [activeComments, setActiveComments] = useState({});
@@ -68,9 +85,55 @@ const PurchaseRequestBoard = () => {
   };
 
   const updateStatus = (id, newStatus) => {
+    if (newStatus === 'purchased') {
+      setSelectedRequestId(id);
+      setShowPurchaseModal(true);
+    } else {
+      setRequests(requests.map(req => 
+        req.id === id ? { ...req, status: newStatus, purchaseAmount: undefined, purchaseDate: undefined } : req
+      ));
+      // 從購買記錄中移除
+      setPurchaseRecords(records => records.filter(record => record.id !== id));
+    }
+  };
+
+  const confirmPurchase = () => {
+    if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) {
+      alert('請輸入有效的購買金額');
+      return;
+    }
+
+    const purchaseDate = new Date().toISOString().split('T')[0];
+    const updatedRequest = requests.find(req => req.id === selectedRequestId);
+    
+    // 更新請求狀態
     setRequests(requests.map(req => 
-      req.id === id ? { ...req, status: newStatus } : req
+      req.id === selectedRequestId 
+        ? { 
+            ...req, 
+            status: 'purchased', 
+            purchaseAmount: parseFloat(purchaseAmount),
+            purchaseDate: purchaseDate
+          }
+        : req
     ));
+
+    // 新增到購買記錄
+    const newRecord = {
+      id: selectedRequestId,
+      title: updatedRequest.title,
+      requester: updatedRequest.requester,
+      purchaseAmount: parseFloat(purchaseAmount),
+      requestDate: updatedRequest.date,
+      purchaseDate: purchaseDate
+    };
+
+    setPurchaseRecords(prev => [...prev, newRecord]);
+    
+    // 清理狀態
+    setPurchaseAmount('');
+    setSelectedRequestId(null);
+    setShowPurchaseModal(false);
   };
 
   const deleteRequest = (id) => {
@@ -123,13 +186,22 @@ const PurchaseRequestBoard = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">採購需求告示牌</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Plus size={20} />
-              新增需求
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRecordsModal(true)}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Receipt size={20} />
+                購買記錄
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Plus size={20} />
+                新增需求
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -218,6 +290,18 @@ const PurchaseRequestBoard = () => {
                   </div>
                 )}
 
+                {request.status === 'purchased' && request.purchaseAmount && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2 text-green-800">
+                      <DollarSign size={16} />
+                      <span className="font-medium">購買金額：NT$ {request.purchaseAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm text-green-600 mt-1">
+                      購買日期：{request.purchaseDate}
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex gap-2 mb-3">
                   <button
@@ -295,7 +379,134 @@ const PurchaseRequestBoard = () => {
           ))}
         </div>
 
-        {/* Modal */}
+        {/* Purchase Amount Modal */}
+        {showPurchaseModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center">
+                <h2 className="text-lg font-semibold">確認購買</h2>
+                <button
+                  onClick={() => {
+                    setShowPurchaseModal(false);
+                    setPurchaseAmount('');
+                    setSelectedRequestId(null);
+                  }}
+                  className="text-white hover:bg-green-600 p-1 rounded transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <p className="text-gray-700 mb-4">
+                  請輸入購買金額以確認完成採購：
+                </p>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    購買金額 (NT$)
+                  </label>
+                  <input
+                    type="number"
+                    value={purchaseAmount}
+                    onChange={(e) => setPurchaseAmount(e.target.value)}
+                    placeholder="請輸入金額..."
+                    min="0"
+                    step="1"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowPurchaseModal(false);
+                      setPurchaseAmount('');
+                      setSelectedRequestId(null);
+                    }}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={confirmPurchase}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors"
+                  >
+                    確認購買
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Purchase Records Modal */}
+        {showRecordsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
+              <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center">
+                <h2 className="text-lg font-semibold">購買記錄</h2>
+                <button
+                  onClick={() => setShowRecordsModal(false)}
+                  className="text-white hover:bg-green-600 p-1 rounded transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+                {purchaseRecords.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Receipt size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-500">暫無購買記錄</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center gap-2 text-green-800 mb-2">
+                        <DollarSign size={20} />
+                        <span className="font-semibold">總支出金額：NT$ {purchaseRecords.reduce((total, record) => total + record.purchaseAmount, 0).toLocaleString()}</span>
+                      </div>
+                      <p className="text-sm text-green-600">共 {purchaseRecords.length} 筆購買記錄</p>
+                    </div>
+
+                    {purchaseRecords.map((record) => (
+                      <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{record.title}</h3>
+                          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            已購買
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">提出者：</span>
+                            <span className="font-medium">{record.requester}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">購買金額：</span>
+                            <span className="font-medium text-green-600">NT$ {record.purchaseAmount.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">需求日期：</span>
+                            <span className="font-medium">{record.requestDate}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">購買日期：</span>
+                            <span className="font-medium">{record.purchaseDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Request Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
