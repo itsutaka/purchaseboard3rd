@@ -41,13 +41,30 @@ To run both the React development server (with hot reloading for the client) and
 npm run dev
 ```
 
-This will typically:
--   Start the React (Vite) dev server on `http://localhost:5173` (or another port if 5173 is busy).
--   Start the Node.js (Express) server on `http://localhost:3001`.
+This command starts two servers:
 
-You can also run them separately:
--   Client (React Vite dev server): `npm run dev:client`
--   Server (Node.js with nodemon): `npm run dev:server`
+1.  **React (Vite) Development Server:**
+    *   Typically runs on `http://localhost:5173` (or the next available port).
+    *   **This is the URL you should use in your browser to see the application and benefit from hot reloading during development.**
+
+2.  **Node.js (Express) Server:**
+    *   Typically runs on `http://localhost:3001` (or the port specified by `PORT` if set).
+    *   This server is responsible for serving the application in production *after* it has been built.
+    *   During development (`npm run dev`), if you access `http://localhost:3001/` directly, you might see an error (like "Cannot GET /" or a file not found error for `index.html`). This is because the `dist/client` directory (which this server serves from) is not created until you run `npm run build`.
+    *   If your React application needs to make API calls to the Node.js backend (e.g., to `/api/health`), Vite is configured to proxy these requests from `http://localhost:5173` to `http://localhost:3001` (this proxy is currently a placeholder in `vite.config.js` and would need to be fully configured if API routes are added).
+
+You can also run the client and server development processes separately:
+-   **Client (React Vite dev server only):**
+    ```bash
+    npm run dev:client
+    ```
+    Access at `http://localhost:5173`.
+
+-   **Server (Node.js with nodemon only):**
+    ```bash
+    npm run dev:server
+    ```
+    Runs on `http://localhost:3001`.
 
 ### Building for Production
 
