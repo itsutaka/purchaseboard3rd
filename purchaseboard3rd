@@ -32,6 +32,7 @@ const PurchaseRequestBoard = () => {
       date: '2025-05-24',
       purchaseAmount: 12000,
       purchaseDate: '2025-05-26',
+      purchaserName: '未知', // Added placeholder
       comments: []
     }
   ]);
@@ -43,7 +44,8 @@ const PurchaseRequestBoard = () => {
       requester: '王小明',
       purchaseAmount: 12000,
       requestDate: '2025-05-24',
-      purchaseDate: '2025-05-26'
+      purchaseDate: '2025-05-26',
+      purchaserName: '未知' // Added placeholder
     }
   ]);
 
@@ -52,10 +54,15 @@ const PurchaseRequestBoard = () => {
   const [showRecordsModal, setShowRecordsModal] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [purchaseAmount, setPurchaseAmount] = useState('');
+  const [purchaserNameInput, setPurchaserNameInput] = useState(''); // 1. Add new state
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [activeComments, setActiveComments] = useState({});
   const [newComment, setNewComment] = useState('');
+  // 1. Add new state variables for filters:
+  const [filterPurchaserName, setFilterPurchaserName] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -102,6 +109,11 @@ const PurchaseRequestBoard = () => {
       alert('請輸入有效的購買金額');
       return;
     }
+    // 3. Modify confirmPurchase function: Add validation for purchaser name
+    if (!purchaserNameInput.trim()) {
+      alert('請輸入購買人姓名');
+      return;
+    }
 
     const purchaseDate = new Date().toISOString().split('T')[0];
     const updatedRequest = requests.find(req => req.id === selectedRequestId);
@@ -113,7 +125,8 @@ const PurchaseRequestBoard = () => {
             ...req, 
             status: 'purchased', 
             purchaseAmount: parseFloat(purchaseAmount),
-            purchaseDate: purchaseDate
+            purchaseDate: purchaseDate,
+            purchaserName: purchaserNameInput // 3. Modify confirmPurchase function: Add purchaserName to requests state
           }
         : req
     ));
@@ -125,13 +138,15 @@ const PurchaseRequestBoard = () => {
       requester: updatedRequest.requester,
       purchaseAmount: parseFloat(purchaseAmount),
       requestDate: updatedRequest.date,
-      purchaseDate: purchaseDate
+      purchaseDate: purchaseDate,
+      purchaserName: purchaserNameInput // 3. Modify confirmPurchase function: Add purchaserName to purchaseRecords state
     };
 
     setPurchaseRecords(prev => [...prev, newRecord]);
     
     // 清理狀態
     setPurchaseAmount('');
+    setPurchaserNameInput(''); // 3. Modify confirmPurchase function: Reset purchaserNameInput
     setSelectedRequestId(null);
     setShowPurchaseModal(false);
   };
@@ -178,6 +193,28 @@ const PurchaseRequestBoard = () => {
     if (sortBy === 'oldest') return new Date(a.date) - new Date(b.date);
     return 0;
   });
+
+  // 2. Filtering Logic:
+  const filteredPurchaseRecords = React.useMemo(() => {
+    return purchaseRecords.filter(record => {
+      const matchesPurchaser = filterPurchaserName
+        ? record.purchaserName?.toLowerCase().includes(filterPurchaserName.toLowerCase())
+        : true;
+      
+      // Date filtering with validity checks
+      let Rdate = null;
+      try { Rdate = new Date(record.purchaseDate); if(isNaN(Rdate.getTime())) Rdate = null; } catch (e) { Rdate = null; }
+      let Sdate = null;
+      try { Sdate = new Date(filterStartDate); if(isNaN(Sdate.getTime())) Sdate = null; } catch (e) { Sdate = null; }
+      let Edate = null;
+      try { Edate = new Date(filterEndDate); if(isNaN(Edate.getTime())) Edate = null; } catch (e) { Edate = null; }
+
+      const matchesStartDate = Sdate && Rdate ? Rdate >= Sdate : true;
+      const matchesEndDate = Edate && Rdate ? Rdate <= Edate : true;
+      
+      return matchesPurchaser && matchesStartDate && matchesEndDate;
+    });
+  }, [purchaseRecords, filterPurchaserName, filterStartDate, filterEndDate]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -417,6 +454,20 @@ const PurchaseRequestBoard = () => {
                   />
                 </div>
 
+                {/* 2. Update the "Confirm Purchase" Modal: Add new input field for Purchaser Name here */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    購買人
+                  </label>
+                  <input
+                    type="text"
+                    value={purchaserNameInput} // Bind to the new state
+                    onChange={(e) => setPurchaserNameInput(e.target.value)} // Update the new state
+                    placeholder="請輸入購買人姓名..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
@@ -455,22 +506,60 @@ const PurchaseRequestBoard = () => {
               </div>
 
               <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
-                {purchaseRecords.length === 0 ? (
+                {/* 3. Update the "Purchase Records" Modal: Add Filter Inputs */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="text-md font-semibold text-gray-800 mb-3">篩選條件</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">購買人</label>
+                      <input
+                        type="text"
+                        placeholder="依購買人篩選..."
+                        value={filterPurchaserName}
+                        onChange={(e) => setFilterPurchaserName(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">開始日期</label>
+                      <input
+                        type="date"
+                        value={filterStartDate}
+                        onChange={(e) => setFilterStartDate(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">結束日期</label>
+                      <input
+                        type="date"
+                        value={filterEndDate}
+                        onChange={(e) => setFilterEndDate(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Update the "Purchase Records" Modal: Use filteredPurchaseRecords */}
+                {filteredPurchaseRecords.length === 0 ? (
                   <div className="text-center py-8">
                     <Receipt size={48} className="mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-500">暫無購買記錄</p>
+                    <p className="text-gray-500">無符合條件的購買記錄</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* 3. Update Total Summation */}
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center gap-2 text-green-800 mb-2">
                         <DollarSign size={20} />
-                        <span className="font-semibold">總支出金額：NT$ {purchaseRecords.reduce((total, record) => total + record.purchaseAmount, 0).toLocaleString()}</span>
+                        <span className="font-semibold">總支出金額：NT$ {filteredPurchaseRecords.reduce((total, record) => total + record.purchaseAmount, 0).toLocaleString()}</span>
                       </div>
-                      <p className="text-sm text-green-600">共 {purchaseRecords.length} 筆購買記錄</p>
+                      <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆購買記錄</p>
                     </div>
 
-                    {purchaseRecords.map((record) => (
+                    {/* 3. Display Filtered Records */}
+                    {filteredPurchaseRecords.map((record) => (
                       <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                         <div className="flex justify-between items-start mb-3">
                           <h3 className="text-lg font-semibold text-gray-900">{record.title}</h3>
@@ -496,6 +585,12 @@ const PurchaseRequestBoard = () => {
                             <span className="text-gray-600">購買日期：</span>
                             <span className="font-medium">{record.purchaseDate}</span>
                           </div>
+                          {record.purchaserName && (
+                            <div className="col-span-2">
+                              <span className="text-gray-600">購買人：</span>
+                              <span className="font-medium">{record.purchaserName}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
