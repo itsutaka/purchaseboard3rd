@@ -153,7 +153,13 @@ const PurchaseRequestBoard = () => {
   };
 
   const deleteRequest = (id) => {
-    setRequests(requests.filter(req => req.id !== id));
+    const confirmed = window.confirm("您確定要刪除此採購需求嗎？相關的購買記錄和留言也會一併移除。");
+
+    if (confirmed) {
+      setRequests(prevRequests => prevRequests.filter(req => req.id !== id));
+      setPurchaseRecords(prevRecords => prevRecords.filter(record => record.id !== id)); // Added this line
+    }
+    // If not confirmed, the function does nothing further
   };
 
   const addComment = (requestId) => {
@@ -206,10 +212,24 @@ const PurchaseRequestBoard = () => {
   };
 
   const toggleComments = (requestId) => {
-    setActiveComments(prev => ({
-      ...prev,
-      [requestId]: !prev[requestId]
-    }));
+    // Check if the comment section for this requestId is currently closed (or undefined)
+    // and is about to be opened.
+    // We need to access the current state of activeComments *before* it's updated by setActiveComments.
+    // So, we can pass a callback to setActiveComments to get the previous state.
+
+    setActiveComments(prevActiveComments => {
+      const isOpeningNewSection = !prevActiveComments[requestId];
+
+      if (isOpeningNewSection) {
+        setNewComment('');
+        setCommenterName('');
+      }
+      
+      return {
+        ...prevActiveComments,
+        [requestId]: !prevActiveComments[requestId]
+      };
+    });
   };
 
   const filteredRequests = requests.filter(req => {
