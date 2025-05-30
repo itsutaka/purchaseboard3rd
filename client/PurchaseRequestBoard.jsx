@@ -59,6 +59,7 @@ const PurchaseRequestBoard = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [activeComments, setActiveComments] = useState({});
   const [newComment, setNewComment] = useState('');
+  const [commenterName, setCommenterName] = useState(''); // Add this line
   // 1. Add new state variables for filters:
   const [filterPurchaserName, setFilterPurchaserName] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -156,12 +157,22 @@ const PurchaseRequestBoard = () => {
   };
 
   const addComment = (requestId) => {
-    if (!newComment.trim()) return;
+    const trimmedName = commenterName.trim();
+    const trimmedComment = newComment.trim();
+
+    if (!trimmedName) {
+      alert('請輸入您的姓名！');
+      return;
+    }
+    if (!trimmedComment) {
+      alert('請輸入留言內容！');
+      return;
+    }
     
     const comment = {
       id: Date.now(),
-      author: '當前用戶',
-      content: newComment,
+      author: trimmedName, // Use commenterName from state
+      content: trimmedComment, // Use trimmed comment
       date: new Date().toISOString().split('T')[0]
     };
 
@@ -171,7 +182,8 @@ const PurchaseRequestBoard = () => {
         : req
     ));
     
-    setNewComment('');
+    setNewComment(''); // Reset comment content
+    setCommenterName(''); // Reset commenter name
   };
 
   const toggleComments = (requestId) => {
@@ -393,22 +405,30 @@ const PurchaseRequestBoard = () => {
                       </div>
                     )}
                     
-                    <div className="flex gap-2">
+                    {/* Updated Comment Input Section with Stacked Layout */}
+                    <div className="space-y-2 mb-2">
                       <input
                         type="text"
+                        value={commenterName}
+                        onChange={(e) => setCommenterName(e.target.value)}
+                        placeholder="您的姓名* (必填)"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <textarea
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="輸入留言..."
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onKeyPress={(e) => e.key === 'Enter' && addComment(request.id)}
+                        placeholder="輸入留言* (必填)"
+                        rows="3"
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       />
-                      <button
-                        onClick={() => addComment(request.id)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded transition-colors"
-                      >
-                        <Send size={16} />
-                      </button>
                     </div>
+                    <button
+                      onClick={() => addComment(request.id)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors text-sm flex items-center gap-1"
+                    >
+                      <Send size={16} />
+                      送出留言
+                    </button>
                   </div>
                 )}
               </div>
