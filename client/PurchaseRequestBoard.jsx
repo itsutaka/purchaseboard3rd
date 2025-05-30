@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react'; // Added useEffect, useMemo, useRef
 import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign } from 'lucide-react';
 
 const PurchaseRequestBoard = () => {
+  const commenterNameInputRef = useRef(null); // Create ref for commenter name input in modal
+
   const [requests, setRequests] = useState([
     {
       id: 1,
@@ -57,9 +59,14 @@ const PurchaseRequestBoard = () => {
   const [purchaserNameInput, setPurchaserNameInput] = useState(''); // 1. Add new state
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [activeComments, setActiveComments] = useState({});
+  // const [activeComments, setActiveComments] = useState({}); // Removed
   const [newComment, setNewComment] = useState('');
   const [commenterName, setCommenterName] = useState(''); // Add this line
+  
+  // New states for comment modal
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [currentRequestForComment, setCurrentRequestForComment] = useState(null);
+
   // 1. Add new state variables for filters:
   const [filterPurchaserName, setFilterPurchaserName] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -190,6 +197,7 @@ const PurchaseRequestBoard = () => {
     
     setNewComment(''); // Reset comment content
     setCommenterName(''); // Reset commenter name
+    closeCommentModal(); // Added this line
   };
 
   const handleDeleteComment = (requestId, commentId) => {
@@ -211,26 +219,43 @@ const PurchaseRequestBoard = () => {
     // If not confirmed, the function does nothing further
   };
 
-  const toggleComments = (requestId) => {
-    // Check if the comment section for this requestId is currently closed (or undefined)
-    // and is about to be opened.
-    // We need to access the current state of activeComments *before* it's updated by setActiveComments.
-    // So, we can pass a callback to setActiveComments to get the previous state.
-
-    setActiveComments(prevActiveComments => {
-      const isOpeningNewSection = !prevActiveComments[requestId];
-
-      if (isOpeningNewSection) {
-        setNewComment('');
-        setCommenterName('');
-      }
-      
-      return {
-        ...prevActiveComments,
-        [requestId]: !prevActiveComments[requestId]
-      };
-    });
+  const openCommentModal = (request) => {
+    setCurrentRequestForComment(request);
+    setIsCommentModalOpen(true);
+    setNewComment(''); // Clear previous comment text
+    setCommenterName(''); // Clear previous commenter name
   };
+
+  const closeCommentModal = () => {
+    setIsCommentModalOpen(false);
+    setCurrentRequestForComment(null); // Optional: clear the request context
+  };
+
+  // useEffect for ESC key to close modals and autofocus
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape') {
+        if (isCommentModalOpen) {
+          closeCommentModal();
+        }
+        // Add similar checks for other modals if they should also close on ESC
+      }
+    };
+
+    if (isCommentModalOpen) {
+      document.addEventListener('keydown', handleEscapeKey);
+      // Autofocus logic
+      if (commenterNameInputRef.current) {
+        // Optional: setTimeout to ensure element is fully ready
+        // setTimeout(() => commenterNameInputRef.current.focus(), 0); 
+        commenterNameInputRef.current.focus();
+      }
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isCommentModalOpen, closeCommentModal]);
 
   const filteredRequests = requests.filter(req => {
     if (filter === 'all') return true;
@@ -393,11 +418,11 @@ const PurchaseRequestBoard = () => {
                 {/* Action Buttons */}
                 <div className="flex gap-2 mb-3">
                   <button
-                    onClick={() => toggleComments(request.id)}
+                    onClick={() => openCommentModal(request)} 
                     className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm"
                   >
                     <MessageCircle size={16} />
-                    留言
+                    留言 ({request.comments.length}) {/* Show comment count */}
                   </button>
                   
                   {request.status === 'pending' && (
@@ -427,58 +452,33 @@ const PurchaseRequestBoard = () => {
                   </button>
                 </div>
 
-                {/* Comments Section */}
-                {activeComments[request.id] && (
+                {/* Display of existing comments - always visible if comments exist */}
+                {request.comments.length > 0 && (
                   <div className="border-t pt-3 mt-3">
-                    {request.comments.length > 0 && (
-                      <div className="space-y-2 mb-3">
-                        {request.comments.map((comment) => (
-                          <div key={comment.id} className="bg-gray-50 rounded p-2 group relative"> {/* Added group relative */}
-                            <div className="flex justify-between items-start mb-1">
-                              <div>
-                                <span className="font-medium text-sm text-gray-900">{comment.author}</span>
-                                <span className="text-xs text-gray-500 ml-2">{comment.date}</span>
-                              </div>
-                              <button
-                                onClick={() => handleDeleteComment(request.id, comment.id)} // Placeholder
-                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="刪除留言"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">留言列表：</h4>
+                    <div className="space-y-2">
+                      {request.comments.map((comment) => (
+                        <div key={comment.id} className="bg-gray-50 rounded p-2 group relative">
+                          <div className="flex justify-between items-start mb-1">
+                            <div>
+                              <span className="font-medium text-sm text-gray-900">{comment.author}</span>
+                              <span className="text-xs text-gray-500 ml-2">{comment.date}</span>
                             </div>
-                            <p className="text-sm text-gray-700">{comment.content}</p>
+                            <button
+                              onClick={() => handleDeleteComment(request.id, comment.id)}
+                              className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="刪除留言"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Updated Comment Input Section with Stacked Layout */}
-                    <div className="space-y-2 mb-2">
-                      <input
-                        type="text"
-                        value={commenterName}
-                        onChange={(e) => setCommenterName(e.target.value)}
-                        placeholder="您的姓名* (必填)"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="輸入留言* (必填)"
-                        rows="3"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      />
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                        </div>
+                      ))}
                     </div>
-                    <button
-                      onClick={() => addComment(request.id)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors text-sm flex items-center gap-1"
-                    >
-                      <Send size={16} />
-                      送出留言
-                    </button>
                   </div>
                 )}
+                {/* Inline input form has been removed */}
               </div>
             </div>
           ))}
@@ -745,6 +745,83 @@ const PurchaseRequestBoard = () => {
                     提交需求
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comment Modal */}
+        {isCommentModalOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out"
+            onClick={closeCommentModal} // Backdrop click to close
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4 transform transition-all duration-300 ease-in-out scale-100"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  發表留言於：<span className="font-bold">{currentRequestForComment?.title || '需求'}</span>
+                </h2>
+                <button 
+                  onClick={closeCommentModal} // Connected close button
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors"
+                  title="關閉"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="commenterNameModal" className="block text-sm font-medium text-gray-700 mb-1">您的姓名*</label>
+                  <input
+                    id="commenterNameModal"
+                    ref={commenterNameInputRef} // Assign ref
+                    type="text"
+                    value={commenterName}
+                    onChange={(e) => setCommenterName(e.target.value)}
+                    placeholder="請輸入您的姓名..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="newCommentModal" className="block text-sm font-medium text-gray-700 mb-1">留言內容*</label>
+                  <textarea
+                    id="newCommentModal"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="請輸入留言內容..."
+                    rows="4"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Footer/Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-4">
+                <button
+                  type="button"
+                  onClick={closeCommentModal} // Connected cancel button
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentRequestForComment) {
+                      addComment(currentRequestForComment.id);
+                    }
+                  }}
+                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Send size={16} />
+                  送出留言
+                </button>
               </div>
             </div>
           </div>
