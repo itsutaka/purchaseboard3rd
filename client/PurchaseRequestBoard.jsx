@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'; // Added useEffect, useMemo, useRef
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useCallback
 import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign } from 'lucide-react';
 
 const PurchaseRequestBoard = () => {
@@ -219,17 +219,17 @@ const PurchaseRequestBoard = () => {
     // If not confirmed, the function does nothing further
   };
 
-  const openCommentModal = (request) => {
+  const openCommentModal = useCallback((request) => {
     setCurrentRequestForComment(request);
     setIsCommentModalOpen(true);
-    setNewComment(''); // Clear previous comment text
-    setCommenterName(''); // Clear previous commenter name
-  };
+    setNewComment('');
+    setCommenterName('');
+  }, []); // Empty dependency array as setters are stable
 
-  const closeCommentModal = () => {
+  const closeCommentModal = useCallback(() => {
     setIsCommentModalOpen(false);
-    setCurrentRequestForComment(null); // Optional: clear the request context
-  };
+    setCurrentRequestForComment(null);
+  }, []); // Empty dependency array as setters are stable
 
   // useEffect for ESC key to close modals and autofocus
   useEffect(() => {
