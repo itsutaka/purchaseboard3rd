@@ -186,6 +186,25 @@ const PurchaseRequestBoard = () => {
     setCommenterName(''); // Reset commenter name
   };
 
+  const handleDeleteComment = (requestId, commentId) => {
+    const confirmed = window.confirm("您確定要刪除此留言嗎？"); // Added confirmation
+
+    if (confirmed) { // Proceed only if user confirms
+      setRequests(prevRequests =>
+        prevRequests.map(request => {
+          if (request.id === requestId) {
+            const updatedComments = request.comments.filter(
+              comment => comment.id !== commentId
+            );
+            return { ...request, comments: updatedComments };
+          }
+          return request;
+        })
+      );
+    }
+    // If not confirmed, the function does nothing further
+  };
+
   const toggleComments = (requestId) => {
     setActiveComments(prev => ({
       ...prev,
@@ -394,10 +413,19 @@ const PurchaseRequestBoard = () => {
                     {request.comments.length > 0 && (
                       <div className="space-y-2 mb-3">
                         {request.comments.map((comment) => (
-                          <div key={comment.id} className="bg-gray-50 rounded p-2">
+                          <div key={comment.id} className="bg-gray-50 rounded p-2 group relative"> {/* Added group relative */}
                             <div className="flex justify-between items-start mb-1">
-                              <span className="font-medium text-sm text-gray-900">{comment.author}</span>
-                              <span className="text-xs text-gray-500">{comment.date}</span>
+                              <div>
+                                <span className="font-medium text-sm text-gray-900">{comment.author}</span>
+                                <span className="text-xs text-gray-500 ml-2">{comment.date}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteComment(request.id, comment.id)} // Placeholder
+                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="刪除留言"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                             <p className="text-sm text-gray-700">{comment.content}</p>
                           </div>
