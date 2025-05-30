@@ -153,7 +153,13 @@ const PurchaseRequestBoard = () => {
   };
 
   const deleteRequest = (id) => {
-    setRequests(requests.filter(req => req.id !== id));
+    const confirmed = window.confirm("您確定要刪除此採購需求嗎？相關的購買記錄和留言也會一併移除。");
+
+    if (confirmed) {
+      setRequests(prevRequests => prevRequests.filter(req => req.id !== id));
+      setPurchaseRecords(prevRecords => prevRecords.filter(record => record.id !== id)); // Added this line
+    }
+    // If not confirmed, the function does nothing further
   };
 
   const addComment = (requestId) => {
