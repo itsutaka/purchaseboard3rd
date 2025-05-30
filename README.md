@@ -5,12 +5,22 @@ This project is a Purchase Request Board application built with React (using Vit
 ## Project Structure
 
 -   `/client`: Contains the React application source code (components, main entry point, styles).
+    -   `client/index.css`: Main stylesheet, includes Tailwind CSS directives.
 -   `/server`: Contains the Node.js (Express) server code (`server.js`).
 -   `/dist/client`: Default output directory for the React application build (generated after running the build script).
 -   `index.html`: Main HTML entry point for the React application (located in project root).
+-   `tailwind.config.js`: Configuration file for Tailwind CSS.
+-   `postcss.config.js`: Configuration file for PostCSS (integrates Tailwind with Vite).
 -   `vite.config.js`: Configuration file for Vite.
 -   `package.json`: Project metadata, dependencies, and scripts.
 -   `README.md`: This file.
+
+## Styling
+
+This project uses [Tailwind CSS](https://tailwindcss.com/) for utility-first styling.
+-   Configuration: `tailwind.config.js`, `postcss.config.js`.
+-   Main CSS file with Tailwind directives: `client/index.css` (imported into `client/main.jsx`).
+-   Utility classes are applied directly within the `.jsx` components.
 
 ## Prerequisites
 
