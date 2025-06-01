@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'; // Added useEffect, useMemo, useRef
-import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useCallback
+import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign, Tag, Download } from 'lucide-react'; // Added Tag and Download
 
 const PurchaseRequestBoard = () => {
   const commenterNameInputRef = useRef(null); // Create ref for commenter name input in modal
@@ -12,6 +12,7 @@ const PurchaseRequestBoard = () => {
       requester: '王小明',
       status: 'pending',
       date: '2025-05-26',
+      accountingCategory: "", // Added
       comments: []
     },
     {
@@ -21,6 +22,7 @@ const PurchaseRequestBoard = () => {
       requester: '李小華',
       status: 'pending',
       date: '2025-05-25',
+      accountingCategory: "", // Added
       comments: [
         { id: 1, author: '張經理', content: '已經找到合適的型號了', date: '2025-05-25' }
       ]
@@ -35,6 +37,7 @@ const PurchaseRequestBoard = () => {
       purchaseAmount: 12000,
       purchaseDate: '2025-05-26',
       purchaserName: '未知', // Added placeholder
+      accountingCategory: "", // Added
       comments: []
     }
   ]);
@@ -47,7 +50,8 @@ const PurchaseRequestBoard = () => {
       purchaseAmount: 12000,
       requestDate: '2025-05-24',
       purchaseDate: '2025-05-26',
-      purchaserName: '未知' // Added placeholder
+      purchaserName: '未知', // Added placeholder
+      accountingCategory: "" // Added
     }
   ]);
 
@@ -62,7 +66,7 @@ const PurchaseRequestBoard = () => {
   // const [activeComments, setActiveComments] = useState({}); // Removed
   const [newComment, setNewComment] = useState('');
   const [commenterName, setCommenterName] = useState(''); // Add this line
-  
+
   // New states for comment modal
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [currentRequestForComment, setCurrentRequestForComment] = useState(null);
@@ -74,7 +78,8 @@ const PurchaseRequestBoard = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    requester: ''
+    requester: '',
+    accountingCategory: '' // Added
   });
 
   const statusLabels = {
@@ -83,19 +88,25 @@ const PurchaseRequestBoard = () => {
   };
 
   const handleSubmit = () => {
+    // Basic validation for required fields
     if (!formData.title.trim() || !formData.description.trim() || !formData.requester.trim()) {
+      alert('請填寫所有必填欄位：需求標題、詳細描述、提出者姓名。'); // Alert for missing required fields
       return;
     }
     
     const newRequest = {
-      id: requests.length + 1,
-      ...formData,
+      id: requests.length > 0 ? Math.max(...requests.map(r => r.id)) + 1 : 1, // More robust ID
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      requester: formData.requester.trim(),
+      accountingCategory: formData.accountingCategory.trim(), // Include accountingCategory
       status: 'pending',
       date: new Date().toISOString().split('T')[0],
       comments: []
     };
     setRequests([newRequest, ...requests]);
-    setFormData({ title: '', description: '', requester: '' });
+    // Reset all form fields including the new one
+    setFormData({ title: '', description: '', requester: '', accountingCategory: '' });
     setShowModal(false);
   };
 
@@ -124,7 +135,7 @@ const PurchaseRequestBoard = () => {
     }
 
     const purchaseDate = new Date().toISOString().split('T')[0];
-    const updatedRequest = requests.find(req => req.id === selectedRequestId);
+    const originalRequest = requests.find(req => req.id === selectedRequestId); // Renamed for clarity
     
     // 更新請求狀態
     setRequests(requests.map(req => 
@@ -142,12 +153,13 @@ const PurchaseRequestBoard = () => {
     // 新增到購買記錄
     const newRecord = {
       id: selectedRequestId,
-      title: updatedRequest.title,
-      requester: updatedRequest.requester,
+      title: originalRequest.title,
+      requester: originalRequest.requester,
       purchaseAmount: parseFloat(purchaseAmount),
-      requestDate: updatedRequest.date,
+      requestDate: originalRequest.date,
       purchaseDate: purchaseDate,
-      purchaserName: purchaserNameInput // 3. Modify confirmPurchase function: Add purchaserName to purchaseRecords state
+      purchaserName: purchaserNameInput,
+      accountingCategory: originalRequest.accountingCategory || "" // Added this line
     };
 
     setPurchaseRecords(prev => [...prev, newRecord]);
@@ -219,17 +231,17 @@ const PurchaseRequestBoard = () => {
     // If not confirmed, the function does nothing further
   };
 
-  const openCommentModal = (request) => {
+  const openCommentModal = useCallback((request) => {
     setCurrentRequestForComment(request);
     setIsCommentModalOpen(true);
-    setNewComment(''); // Clear previous comment text
-    setCommenterName(''); // Clear previous commenter name
-  };
+    setNewComment('');
+    setCommenterName('');
+  }, []); // Empty dependency array as setters are stable
 
-  const closeCommentModal = () => {
+  const closeCommentModal = useCallback(() => {
     setIsCommentModalOpen(false);
-    setCurrentRequestForComment(null); // Optional: clear the request context
-  };
+    setCurrentRequestForComment(null);
+  }, []); // Empty dependency array as setters are stable
 
   // useEffect for ESC key to close modals and autofocus
   useEffect(() => {
@@ -247,7 +259,7 @@ const PurchaseRequestBoard = () => {
       // Autofocus logic
       if (commenterNameInputRef.current) {
         // Optional: setTimeout to ensure element is fully ready
-        // setTimeout(() => commenterNameInputRef.current.focus(), 0); 
+        // setTimeout(() => commenterNameInputRef.current.focus(), 0);
         commenterNameInputRef.current.focus();
       }
     }
@@ -256,6 +268,54 @@ const PurchaseRequestBoard = () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [isCommentModalOpen, closeCommentModal]);
+
+  const exportPurchaseRecordsToCSV = () => {
+    if (filteredPurchaseRecords.length === 0) {
+      alert("沒有可匯出的購買記錄。");
+      return;
+    }
+
+    alert("正在準備匯出 CSV 檔案，請留意瀏覽器的下載提示。"); // Added notification
+
+    // Helper to escape CSV fields
+    const escapeCSVField = (field) => {
+      const stringField = String(field === null || field === undefined ? '' : field);
+      const escapedField = stringField.replace(/"/g, '""');
+      return `"${escapedField}"`;
+    };
+
+    const headers = [
+      "ID", "項目名稱", "提出者", "購買金額",
+      "需求日期", "購買日期", "購買人", "會計類別" // Translated headers
+    ];
+
+    let csvContent = headers.map(escapeCSVField).join(',') + '\r\n';
+
+    filteredPurchaseRecords.forEach(record => {
+      const row = [
+        record.id,
+        record.title,
+        record.requester,
+        record.purchaseAmount,
+        record.requestDate,
+        record.purchaseDate,
+        record.purchaserName || "",
+        record.accountingCategory || ""
+      ];
+      csvContent += row.map(escapeCSVField).join(',') + '\r\n';
+    });
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); // Added BOM for Excel UTF-8 compatibility
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'purchase-records.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const filteredRequests = requests.filter(req => {
     if (filter === 'all') return true;
@@ -276,7 +336,7 @@ const PurchaseRequestBoard = () => {
       const matchesPurchaser = filterPurchaserName
         ? record.purchaserName?.toLowerCase().includes(filterPurchaserName.toLowerCase())
         : true;
-      
+
       // Date filtering with validity checks
       let Rdate = null;
       try { Rdate = new Date(record.purchaseDate); if(isNaN(Rdate.getTime())) Rdate = null; } catch (e) { Rdate = null; }
@@ -287,7 +347,7 @@ const PurchaseRequestBoard = () => {
 
       const matchesStartDate = Sdate && Rdate ? Rdate >= Sdate : true;
       const matchesEndDate = Edate && Rdate ? Rdate <= Edate : true;
-      
+
       return matchesPurchaser && matchesStartDate && matchesEndDate;
     });
   }, [purchaseRecords, filterPurchaserName, filterStartDate, filterEndDate]);
@@ -397,9 +457,17 @@ const PurchaseRequestBoard = () => {
                 </div>
 
                 {request.requester && (
-                  <div className="flex items-center gap-1 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center gap-1 text-sm text-gray-600 mb-2"> {/* Reduced mb for tighter packing */}
                     <User size={16} />
                     <span>提出者：{request.requester} • {request.date}</span>
+                  </div>
+                )}
+
+                {/* Accounting Category Display */}
+                {request.accountingCategory && (
+                  <div className="flex items-center gap-1 text-sm text-gray-600 mb-4">
+                    <Tag size={16} className="text-gray-500" />
+                    <span>會計類別：{request.accountingCategory}</span>
                   </div>
                 )}
 
@@ -418,7 +486,7 @@ const PurchaseRequestBoard = () => {
                 {/* Action Buttons */}
                 <div className="flex gap-2 mb-3">
                   <button
-                    onClick={() => openCommentModal(request)} 
+                    onClick={() => openCommentModal(request)}
                     className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm"
                   >
                     <MessageCircle size={16} />
@@ -565,12 +633,23 @@ const PurchaseRequestBoard = () => {
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
               <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center">
                 <h2 className="text-lg font-semibold">購買記錄</h2>
-                <button
-                  onClick={() => setShowRecordsModal(false)}
-                  className="text-white hover:bg-green-600 p-1 rounded transition-colors"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-3"> {/* Wrapper for buttons */}
+                  <button
+                    onClick={exportPurchaseRecordsToCSV} // Connected the function
+                    className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors"
+                    title="匯出目前篩選的記錄為 CSV"
+                  >
+                    <Download size={18} />
+                    匯出 CSV
+                  </button>
+                  <button
+                    onClick={() => setShowRecordsModal(false)}
+                    className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" // Keep X button style distinct
+                    title="關閉"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)]">
@@ -659,6 +738,12 @@ const PurchaseRequestBoard = () => {
                               <span className="font-medium">{record.purchaserName}</span>
                             </div>
                           )}
+                          {record.accountingCategory && (
+                            <div className="col-span-2 sm:col-span-1"> {/* Display accounting category */}
+                              <span className="text-gray-600">會計類別：</span>
+                              <span className="font-medium">{record.accountingCategory}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -728,6 +813,20 @@ const PurchaseRequestBoard = () => {
                   />
                 </div>
 
+                {/* New Accounting Category Input Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    會計類別 (選填)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.accountingCategory}
+                    onChange={(e) => setFormData({...formData, accountingCategory: e.target.value})}
+                    placeholder="請輸入會計科目或類別..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
                 {/* Modal Actions */}
                 <div className="flex gap-3 pt-4">
                   <button
@@ -752,11 +851,11 @@ const PurchaseRequestBoard = () => {
 
         {/* Comment Modal */}
         {isCommentModalOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out"
             onClick={closeCommentModal} // Backdrop click to close
           >
-            <div 
+            <div
               className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4 transform transition-all duration-300 ease-in-out scale-100"
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
             >
@@ -765,7 +864,7 @@ const PurchaseRequestBoard = () => {
                 <h2 className="text-xl font-semibold text-gray-800">
                   發表留言於：<span className="font-bold">{currentRequestForComment?.title || '需求'}</span>
                 </h2>
-                <button 
+                <button
                   onClick={closeCommentModal} // Connected close button
                   className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors"
                   title="關閉"
