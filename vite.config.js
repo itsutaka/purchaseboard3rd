@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     proxy: {
       // Proxy API requests from React dev server to Node.js server
-      // Example: '/api': 'http://localhost:3001' 
+      // Example: '/api': 'http://localhost:3001'
       // (if your Node server runs on 3001 and React dev on 5173)
     }
   }
