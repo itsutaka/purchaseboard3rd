@@ -1,0 +1,16 @@
+{
+  "name": "purchaseboard-functions",
+  "version": "1.0.0",
+  "description": "Firebase Functions for Purchaseboard",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "firebase-functions": "^5.0.1",
+    "firebase-admin": "^12.1.1",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

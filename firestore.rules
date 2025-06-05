@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Requirements:
+    // - Anyone can read requirements.
+    // - Authenticated users can create requirements (function already ensures userId matches).
+    // - Users can only update or delete their own requirements.
+    match /requirements/{requirementId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // TODO: Add rules for a 'comments' collection if implemented.
+    // Example for comments (assuming comments are linked to requirements and users):
+    // match /comments/{commentId} {
+    //   allow read: if true; // Or perhaps only if user can read the requirement
+    //   allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    //   allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    // }
+  }
+}
