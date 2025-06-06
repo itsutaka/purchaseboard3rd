@@ -11,6 +11,19 @@ const app = express();
 // Middleware for parsing JSON request bodies
 app.use(express.json());
 
+// Helper function to get user display name
+const getUserDisplayName = async (uid) => {
+  if (!uid) return 'Anonymous';
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    return userRecord.displayName || userRecord.email || 'Anonymous';
+  } catch (error) {
+    functions.logger.error('Error fetching user data for display name:', uid, error);
+    return 'Unknown User';
+  }
+};
+
+
 // Authentication Middleware
 const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -23,7 +36,7 @@ const verifyFirebaseToken = async (req, res, next) => {
   const idToken = authHeader.split('Bearer ')[1];
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    req.user = decodedToken; // Add decoded token to request object
+    req.user = decodedToken;
     functions.logger.log('ID Token correctly decoded', decodedToken);
     next();
   } catch (error) {
@@ -42,47 +55,101 @@ app.get('/api/health', (req, res) => {
 // POST /api/requirements (Create) - Protected
 app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, description, accountingCategory } = req.body;
     if (!text) {
-      return res.status(400).json({ message: 'Text is required' });
+      return res.status(400).json({ message: 'Text (title) is required' });
     }
-    // Add user UID to the requirement to associate it with the user
+
     const newRequirement = {
       text,
-      status: 'pending', // Default status
+      description: description || "", // Store description
+      accountingCategory: accountingCategory || "",
+      status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      userId: req.user.uid, // Associate with the authenticated user
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      userId: req.user.uid,
+      requesterName: req.user.name || req.user.email || 'Anonymous', // Store requester's name at creation
     };
     const docRef = await db.collection('requirements').add(newRequirement);
-    // For the response, convert serverTimestamp to a client-friendly format immediately
-    const createdData = {
-        id: docRef.id,
-        text: newRequirement.text,
-        status: newRequirement.status,
-        userId: newRequirement.userId,
-        createdAt: new Date().toISOString() // Approximate for immediate client use
-    };
+    const createdData = { id: docRef.id, ...newRequirement, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
     res.status(201).json(createdData);
   } catch (error) {
-    functions.logger.error('Error creating requirement:', error, { structuredData: true });
+    functions.logger.error('Error creating requirement:', error);
     res.status(500).json({ message: 'Error creating requirement', error: error.message });
   }
 });
 
-// GET /api/requirements (Read All) - Public for now
+// PUT /api/requirements/:id (Update) - Protected
+app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dataToUpdate = req.body; // e.g., { status, purchaseAmount, text, description, etc. }
+
+    const requirementRef = db.collection('requirements').doc(id);
+    const doc = await requirementRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Requirement not found' });
+    }
+
+    if (doc.data().userId !== req.user.uid) {
+      return res.status(403).json({ message: 'Forbidden. You can only update your own requirements.' });
+    }
+
+    // Ensure server timestamp for updatedAt
+    dataToUpdate.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+    // Handle explicit null values for clearing fields
+    const fieldsToClear = ['purchaseAmount', 'purchaseDate', 'purchaserName'];
+    fieldsToClear.forEach(field => {
+      if (dataToUpdate[field] === null) {
+        dataToUpdate[field] = admin.firestore.FieldValue.delete(); // Or set to null if preferred and handled by client
+      }
+    });
+
+
+    await requirementRef.update(dataToUpdate);
+    const updatedDoc = await requirementRef.get();
+    const updatedData = { id: updatedDoc.id, ...updatedDoc.data(),
+        createdAt: updatedDoc.data().createdAt?.toDate().toISOString(), // keep original createdAt
+        updatedAt: updatedDoc.data().updatedAt?.toDate().toISOString()
+    };
+    res.status(200).json(updatedData);
+  } catch (error) {
+    functions.logger.error('Error updating requirement:', error);
+    res.status(500).json({ message: 'Error updating requirement', error: error.message });
+  }
+});
+
+
+// GET /api/requirements (Read All)
 app.get('/api/requirements', async (req, res) => {
   try {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();
-    const requirements = [];
-    snapshot.forEach(doc => {
+    const requirementsPromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
-      requirements.push({
+
+      // Fetch comments for each requirement
+      const commentsSnapshot = await db.collection('requirements').doc(doc.id).collection('comments').orderBy('createdAt', 'asc').get();
+      const comments = commentsSnapshot.docs.map(commentDoc => ({
+        id: commentDoc.id,
+        ...commentDoc.data(),
+        createdAt: commentDoc.data().createdAt?.toDate().toISOString(),
+      }));
+
+      // Fetch requester name if not already stored or to ensure it's up-to-date
+      const requesterName = data.requesterName || await getUserDisplayName(data.userId);
+
+      return {
         id: doc.id,
         ...data,
-        createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
-        updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
-      });
+        requesterName, // Add/overwrite requesterName
+        comments, // Add comments array
+        createdAt: data.createdAt?.toDate().toISOString(),
+        updatedAt: data.updatedAt?.toDate().toISOString(),
+      };
     });
+    const requirements = await Promise.all(requirementsPromises);
     res.status(200).json(requirements);
   } catch (error) {
     functions.logger.error('Error fetching requirements:', error);
@@ -90,7 +157,7 @@ app.get('/api/requirements', async (req, res) => {
   }
 });
 
-// GET /api/requirements/:id (Read One) - Public for now
+// GET /api/requirements/:id (Read One)
 app.get('/api/requirements/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -99,17 +166,97 @@ app.get('/api/requirements/:id', async (req, res) => {
       return res.status(404).json({ message: 'Requirement not found' });
     }
     const data = doc.data();
+
+    // Fetch comments
+    const commentsSnapshot = await db.collection('requirements').doc(id).collection('comments').orderBy('createdAt', 'asc').get();
+    const comments = commentsSnapshot.docs.map(commentDoc => ({
+      id: commentDoc.id,
+      ...commentDoc.data(),
+      createdAt: commentDoc.data().createdAt?.toDate().toISOString(),
+    }));
+
+    const requesterName = data.requesterName || await getUserDisplayName(data.userId);
+
     res.status(200).json({
       id: doc.id,
       ...data,
-      createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
-      updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
+      requesterName,
+      comments,
+      createdAt: data.createdAt?.toDate().toISOString(),
+      updatedAt: data.updatedAt?.toDate().toISOString(),
     });
   } catch (error) {
     functions.logger.error('Error fetching requirement:', error);
     res.status(500).json({ message: 'Error fetching requirement', error: error.message });
   }
 });
+
+// --- Comments API Endpoints ---
+
+// POST /api/requirements/:reqId/comments (Create Comment) - Protected
+app.post('/api/requirements/:reqId/comments', verifyFirebaseToken, async (req, res) => {
+  try {
+    const { reqId } = req.params;
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ message: 'Comment text is required' });
+    }
+
+    // Check if requirement exists
+    const requirementRef = db.collection('requirements').doc(reqId);
+    const requirementDoc = await requirementRef.get();
+    if (!requirementDoc.exists) {
+      return res.status(404).json({ message: 'Requirement not found' });
+    }
+
+    const newComment = {
+      text,
+      userId: req.user.uid,
+      authorName: req.user.name || req.user.email || 'Anonymous', // Use token name or email
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const commentRef = await requirementRef.collection('comments').add(newComment);
+    const createdCommentData = { id: commentRef.id, ...newComment, createdAt: new Date().toISOString() };
+
+    res.status(201).json(createdCommentData);
+  } catch (error) {
+    functions.logger.error('Error creating comment:', error);
+    res.status(500).json({ message: 'Error creating comment', error: error.message });
+  }
+});
+
+// DELETE /api/requirements/:reqId/comments/:commentId (Delete Comment) - Protected
+app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, async (req, res) => {
+  try {
+    const { reqId, commentId } = req.params;
+
+    const commentRef = db.collection('requirements').doc(reqId).collection('comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+
+    if (!commentDoc.exists) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    // Authorization: Only comment author can delete (or requirement owner - more complex, skip for now)
+    if (commentDoc.data().userId !== req.user.uid) {
+      // As an alternative, one might allow the requirement owner to delete comments too.
+      // const requirementDoc = await db.collection('requirements').doc(reqId).get();
+      // if (!requirementDoc.exists || requirementDoc.data().userId !== req.user.uid) {
+      //   return res.status(403).json({ message: 'Forbidden. You can only delete your own comments.' });
+      // }
+      return res.status(403).json({ message: 'Forbidden. You can only delete your own comments.' });
+    }
+
+    await commentRef.delete();
+    res.status(204).send(); // No Content
+  } catch (error) {
+    functions.logger.error('Error deleting comment:', error);
+    res.status(500).json({ message: 'Error deleting comment', error: error.message });
+  }
+});
+
 
 // Export the Express app as an HTTP function
 export const api = functions.https.onRequest(app);
