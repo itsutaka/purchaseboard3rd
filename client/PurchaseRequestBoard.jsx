@@ -315,24 +315,47 @@ const PurchaseRequestBoard = () => {
     }
   }, [fetchRequests, fetchPurchaseRecords]); // Added fetchPurchaseRecords
 
-  const handleDeleteComment = (requestId, commentId) => {
-    const confirmed = window.confirm("您確定要刪除此留言嗎？"); // Added confirmation
+  const deleteCommentAPI = useCallback(async (requestId, commentId) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/purchaseRequests/${requestId}/comments/${commentId}`, {
+        method: 'DELETE',
+      });
 
-    if (confirmed) { // Proceed only if user confirms
-      setRequests(prevRequests =>
-        prevRequests.map(request => {
-          if (request.id === requestId) {
-            const updatedComments = request.comments.filter(
-              comment => comment.id !== commentId
-            );
-            return { ...request, comments: updatedComments };
-          }
-          return request;
-        })
-      );
+      if (!response.ok) {
+        let errorMsg = `Error deleting comment: ${response.status} ${response.statusText}`;
+        try {
+          const errData = await response.json();
+          errorMsg = errData.error || errData.message || errorMsg;
+        } catch (parseError) {
+          // Ignore if response body is not JSON or empty
+        }
+        throw new Error(errorMsg);
+      }
+      await fetchRequests(); // Refresh data to update comment counts and UI
+    } catch (e) {
+      console.error("deleteCommentAPI Error:", e);
+      setError(e.message || "刪除留言時發生錯誤。"); // Set error state
+      throw e; // Re-throw for the calling function (handleDeleteComment) to catch
+    } finally {
+      setIsLoading(false);
     }
-    // If not confirmed, the function does nothing further
-  };
+  }, [fetchRequests]); // fetchRequests is the main functional dependency here.
+
+  const handleDeleteComment = useCallback(async (requestId, commentId) => {
+    const confirmed = window.confirm("您確定要刪除此留言嗎？");
+    if (confirmed) {
+      try {
+        await deleteCommentAPI(requestId, commentId);
+        alert('留言已成功刪除。');
+      } catch (e) {
+        console.error("Error during comment deletion process in handleDeleteComment:", e);
+        // Error state is set by deleteCommentAPI.
+        // Additional alert here is optional, e.g., alert(`刪除留言失敗: ${e.message}`);
+      }
+    }
+  }, [deleteCommentAPI]); // Added deleteCommentAPI as dependency
 
   const openCommentModal = useCallback((request) => {
     setCurrentRequestForComment(request);
@@ -522,17 +545,20 @@ const PurchaseRequestBoard = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  fetchPurchaseRecords(); // Call fetch first
+                  if (isLoading) return; // Prevent action if already loading
+                  fetchPurchaseRecords();
                   setShowRecordsModal(true);
                 }}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                disabled={isLoading}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Receipt size={20} />
                 購買記錄
               </button>
               <button
                 onClick={() => setShowModal(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                disabled={isLoading}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={20} />
                 新增需求
@@ -650,16 +676,18 @@ const PurchaseRequestBoard = () => {
                 <div className="flex gap-2 mb-3">
                   <button
                     onClick={() => openCommentModal(request)}
-                    className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm"
+                    disabled={isLoading}
+                    className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <MessageCircle size={16} />
-                    留言 ({request.commentCount || 0}) {/* Use request.commentCount */}
+                    留言 ({request.commentCount || 0})
                   </button>
 
                   {request.status === 'pending' && (
                     <button
                       onClick={() => updateStatus(request.id, 'purchased')}
-                      className="flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded transition-colors text-sm"
+                      disabled={isLoading}
+                      className="flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       ✓ 標記為已購買
                     </button>
@@ -668,7 +696,8 @@ const PurchaseRequestBoard = () => {
                   {request.status === 'purchased' && (
                     <button
                       onClick={() => updateStatus(request.id, 'pending')}
-                      className="flex items-center gap-1 px-3 py-1 text-orange-600 hover:bg-orange-50 rounded transition-colors text-sm"
+                      disabled={isLoading}
+                      className="flex items-center gap-1 px-3 py-1 text-orange-600 hover:bg-orange-50 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RotateCcw size={16} />
                       撤銷購買
@@ -676,8 +705,9 @@ const PurchaseRequestBoard = () => {
                   )}
 
                   <button
-                    onClick={() => handleDeleteRequest(request.id)} // Changed to handleDeleteRequest
-                    className="flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm ml-auto"
+                    onClick={() => handleDeleteRequest(request.id)}
+                    disabled={isLoading}
+                    className="flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -697,7 +727,8 @@ const PurchaseRequestBoard = () => {
                             </div>
                             <button
                               onClick={() => handleDeleteComment(request.id, comment.id)}
-                              className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              disabled={isLoading}
+                              className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-25 disabled:cursor-not-allowed"
                               title="刪除留言"
                             >
                               <Trash2 size={14} />
@@ -780,7 +811,8 @@ const PurchaseRequestBoard = () => {
                   </button>
                   <button
                     onClick={confirmPurchase}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors"
+                    disabled={isLoading}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     確認購買
                   </button>
@@ -798,8 +830,9 @@ const PurchaseRequestBoard = () => {
                 <h2 className="text-lg font-semibold">購買記錄</h2>
                 <div className="flex items-center gap-3"> {/* Wrapper for buttons */}
                   <button
-                    onClick={exportPurchaseRecordsToCSV} // Connected the function
-                    className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors"
+                    onClick={exportPurchaseRecordsToCSV}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="匯出目前篩選的記錄為 CSV"
                   >
                     <Download size={18} />
@@ -1002,7 +1035,8 @@ const PurchaseRequestBoard = () => {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors"
+                    disabled={isLoading}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     提交需求
                   </button>
@@ -1079,7 +1113,8 @@ const PurchaseRequestBoard = () => {
                       addComment(currentRequestForComment.id);
                     }
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                    disabled={isLoading}
+                    className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send size={16} />
                   送出留言
