@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>零用金管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        /* Custom scrollbar for transaction list */
+        .scrollable-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .scrollable-list::-webkit-scrollbar-track {
+            background: #e2e8f0; /* Light gray track */
+            border-radius: 10px;
+        }
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* Medium gray thumb */
+            border-radius: 10px;
+        }
+        .scrollable-list::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* Darker gray on hover */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl border border-gray-200">
+        <h1 class="text-4xl font-extrabold text-center text-blue-800 mb-8 tracking-tight">
+            零用金管理系統
+        </h1>
+
+        <div id="message-box" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+            <strong class="font-bold">提示!</strong>
+            <span id="message-text" class="block sm:inline"></span>
+            <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('message-box').classList.add('hidden')">
+                <svg class="fill-current h-6 w-6 text-blue-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.103l-2.651 3.746a1.2 1.2 0 1 1-1.697-1.697l3.746-2.651-3.746-2.651a1.2 1.2 0 0 1 1.697-1.697L10 8.897l2.651-3.746a1.2 1.2 0 0 1 1.697 1.697L11.103 10l3.746 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </span>
+        </div>
+
+        <div id="initial-setup-section" class="bg-blue-50 p-6 rounded-lg shadow-inner mb-8 border border-blue-200">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-4">零用金建立與保管人指定</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="fixed-amount" class="block text-sm font-medium text-gray-700 mb-1">零用金定額 (NT$)</label>
+                    <input type="number" id="fixed-amount" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="例如: 10000">
+                </div>
+                <div>
+                    <label for="custodian-name" class="block text-sm font-medium text-gray-700 mb-1">保管人姓名</label>
+                    <input type="text" id="custodian-name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="例如: 王小明">
+                </div>
+            </div>
+            <button id="set-initial-fund-btn" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                設定初始零用金
+            </button>
+        </div>
+
+        <div id="main-management-section" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
+                    <h2 class="text-2xl font-semibold text-green-700 mb-4">目前零用金狀態</h2>
+                    <p class="text-gray-800 mb-2">
+                        <span class="font-medium">保管人:</span> <span id="display-custodian-name" class="font-bold text-green-800"></span>
+                    </p>
+                    <p class="text-gray-800 mb-2">
+                        <span class="font-medium">期初零用金定額:</span> <span id="display-fixed-amount" class="font-bold text-green-800">NT$0</span>
+                    </p>
+                    <p class="text-gray-800 text-xl">
+                        <span class="font-medium">目前現金餘額:</span> <span id="current-balance" class="font-extrabold text-green-900">NT$0</span>
+                    </p>
+                </div>
+
+                <div class="bg-purple-50 p-6 rounded-lg shadow-inner border border-purple-200">
+                    <h2 class="text-2xl font-semibold text-purple-700 mb-4">支付作業</h2>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label for="payment-date" class="block text-sm font-medium text-gray-700 mb-1">支付日期</label>
+                            <input type="date" id="payment-date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="payee-a" class="block text-sm font-medium text-gray-700 mb-1">請款人</label>
+                            <input type="text" id="payee-a" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="請款人姓名">
+                        </div>
+                        <div>
+                            <label for="payee-b" class="block text-sm font-medium text-gray-700 mb-1">收款廠商/對象</label>
+                            <input type="text" id="payee-b" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="廠商或個人名稱">
+                        </div>
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">會計科目/用途</label>
+                            <input type="text" id="description" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="例如: 臨時採買文具">
+                        </div>
+                        <div>
+                            <label for="amount-paid" class="block text-sm font-medium text-gray-700 mb-1">支付金額 (NT$)</label>
+                            <input type="number" id="amount-paid" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="例如: 500">
+                        </div>
+                    </div>
+                    <button id="record-payment-btn" class="mt-6 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                        記錄支付
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 p-6 rounded-xl shadow-inner border border-yellow-200">
+                <h2 class="text-2xl font-semibold text-yellow-700 mb-4">支付記錄與核銷</h2>
+                <div class="max-h-80 overflow-y-auto scrollable-list mb-6 border border-yellow-300 rounded-lg p-2 bg-white">
+                    <table class="min-w-full divide-y divide-yellow-200">
+                        <thead class="bg-yellow-100 sticky top-0">
+                            <tr>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">日期</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">請款人</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">收款對象</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">用途</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">金額 (NT$)</th>
+                                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-list" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                    </table>
+                    <p id="no-transactions-message" class="text-center text-gray-500 py-4 hidden">尚無支付記錄。</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="reconcile-btn" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                        執行核銷
+                    </button>
+                    <button id="replenish-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                        申請補款 (恢復至定額)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for petty cash management
+        let fixedPettyCashAmount = 0;
+        let currentCashBalance = 0;
+        let custodianName = '';
+        let transactions = []; // Stores all recorded payments
+        const SINGLE_PAYMENT_LIMIT = 6000; // NT$6000 as per Article 2.2
+
+        // DOM elements
+        const initialSetupSection = document.getElementById('initial-setup-section');
+        const mainManagementSection = document.getElementById('main-management-section');
+        const setInitialFundBtn = document.getElementById('set-initial-fund-btn');
+        const fixedAmountInput = document.getElementById('fixed-amount');
+        const custodianNameInput = document.getElementById('custodian-name');
+
+        const displayCustodianName = document.getElementById('display-custodian-name');
+        const displayFixedAmount = document.getElementById('display-fixed-amount');
+        const currentBalanceDisplay = document.getElementById('current-balance');
+
+        const paymentDateInput = document.getElementById('payment-date');
+        const payeeAInput = document.getElementById('payee-a');
+        const payeeBInput = document.getElementById('payee-b');
+        const descriptionInput = document.getElementById('description');
+        const amountPaidInput = document.getElementById('amount-paid');
+        const recordPaymentBtn = document.getElementById('record-payment-btn');
+
+        const transactionListBody = document.getElementById('transaction-list');
+        const noTransactionsMessage = document.getElementById('no-transactions-message');
+        const reconcileBtn = document.getElementById('reconcile-btn');
+        const replenishBtn = document.getElementById('replenish-btn');
+
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+
+        /**
+         * Displays a system message to the user.
+         * @param {string} message - The message to display.
+         * @param {string} type - The type of message (e.g., 'success', 'error', 'info').
+         */
+        function showMessage(message, type = 'info') {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-blue-100', 'bg-green-100', 'bg-red-100', 'border-blue-400', 'border-green-400', 'border-red-400', 'text-blue-700', 'text-green-700', 'text-red-700');
+            messageBox.classList.add('block');
+
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+            } else { // info
+                messageBox.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+
+            // Automatically hide message after 5 seconds
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * Updates the displayed current cash balance and fixed amount.
+         */
+        function updateDisplay() {
+            currentBalanceDisplay.textContent = `NT$${currentCashBalance.toLocaleString()}`;
+            displayFixedAmount.textContent = `NT$${fixedPettyCashAmount.toLocaleString()}`;
+            displayCustodianName.textContent = custodianName;
+        }
+
+        /**
+         * Renders the list of transactions in the table.
+         */
+        function renderTransactions() {
+            transactionListBody.innerHTML = ''; // Clear existing list
+            if (transactions.length === 0) {
+                noTransactionsMessage.classList.remove('hidden');
+                return;
+            }
+            noTransactionsMessage.classList.add('hidden');
+
+            transactions.forEach((transaction, index) => {
+                const row = transactionListBody.insertRow();
+                row.classList.add('hover:bg-gray-50'); // Add hover effect
+                row.insertCell().textContent = transaction.date;
+                row.insertCell().textContent = transaction.payeeA;
+                row.insertCell().textContent = transaction.payeeB;
+                row.insertCell().textContent = transaction.description;
+                row.insertCell().textContent = transaction.amount.toLocaleString();
+                const statusCell = row.insertCell();
+                statusCell.textContent = transaction.reconciled ? '已核銷' : '未核銷';
+                statusCell.classList.add(transaction.reconciled ? 'text-green-600' : 'text-red-600', 'font-medium');
+            });
+        }
+
+        /**
+         * Handles setting the initial petty cash fund and custodian.
+         */
+        setInitialFundBtn.addEventListener('click', () => {
+            const amount = parseFloat(fixedAmountInput.value);
+            const name = custodianNameInput.value.trim();
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('請輸入有效的零用金定額 (必須大於0)。', 'error');
+                return;
+            }
+            if (!name) {
+                showMessage('請輸入保管人姓名。', 'error');
+                return;
+            }
+
+            fixedPettyCashAmount = amount;
+            currentCashBalance = amount; // Initial balance is the fixed amount
+            custodianName = name;
+
+            updateDisplay();
+            initialSetupSection.classList.add('hidden');
+            mainManagementSection.classList.remove('hidden');
+            showMessage(`零用金已成功設定為 NT$${fixedPettyCashAmount.toLocaleString()}，保管人為 ${custodianName}。`, 'success');
+        });
+
+        /**
+         * Handles recording a new payment.
+         */
+        recordPaymentBtn.addEventListener('click', () => {
+            const date = paymentDateInput.value;
+            const payeeA = payeeAInput.value.trim();
+            const payeeB = payeeBInput.value.trim();
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountPaidInput.value);
+
+            if (!date || !payeeA || !payeeB || !description || isNaN(amount) || amount <= 0) {
+                showMessage('請填寫所有支付資訊並確保金額有效。', 'error');
+                return;
+            }
+
+            if (amount > SINGLE_PAYMENT_LIMIT) {
+                showMessage(`單筆支付金額不可超過 NT$${SINGLE_PAYMENT_LIMIT.toLocaleString()}。若需支付大額款項，請事先取得理事會同意。`, 'error');
+                return;
+            }
+
+            if (currentCashBalance < amount) {
+                showMessage('現金餘額不足以支付此筆款項。', 'error');
+                return;
+            }
+
+            // Deduct amount from current balance
+            currentCashBalance -= amount;
+
+            // Add transaction to the list
+            transactions.push({
+                date,
+                payeeA,
+                payeeB,
+                description,
+                amount,
+                reconciled: false // Mark as not yet reconciled
+            });
+
+            updateDisplay();
+            renderTransactions();
+            showMessage(`成功記錄支付 NT$${amount.toLocaleString()}。`, 'success');
+
+            // Clear payment input fields
+            paymentDateInput.value = '';
+            payeeAInput.value = '';
+            payeeBInput.value = '';
+            descriptionInput.value = '';
+            amountPaidInput.value = '';
+        });
+
+        /**
+         * Handles the reconciliation process.
+         * This simulates checking all un-reconciled transactions.
+         */
+        reconcileBtn.addEventListener('click', () => {
+            let totalUnreconciledAmount = 0;
+            let reconciledCount = 0;
+
+            transactions.forEach(transaction => {
+                if (!transaction.reconciled) {
+                    totalUnreconciledAmount += transaction.amount;
+                    transaction.reconciled = true; // Mark as reconciled
+                    reconciledCount++;
+                }
+            });
+
+            if (reconciledCount > 0) {
+                renderTransactions(); // Re-render to show updated status
+                showMessage(`已成功核銷 ${reconciledCount} 筆交易，總金額 NT$${totalUnreconciledAmount.toLocaleString()}。`, 'success');
+            } else {
+                showMessage('目前沒有需要核銷的交易。', 'info');
+            }
+        });
+
+        /**
+         * Handles the replenishment process.
+         * Restores the current cash balance to the fixed amount.
+         */
+        replenishBtn.addEventListener('click', () => {
+            if (fixedPettyCashAmount === 0) {
+                showMessage('請先設定零用金定額。', 'error');
+                return;
+            }
+
+            const replenishmentAmount = fixedPettyCashAmount - currentCashBalance;
+
+            if (replenishmentAmount > 0) {
+                currentCashBalance = fixedPettyCashAmount; // Restore to fixed amount
+                updateDisplay();
+                showMessage(`零用金已成功補款 NT$${replenishmentAmount.toLocaleString()}，恢復至定額 NT$${fixedPettyCashAmount.toLocaleString()}。`, 'success');
+            } else {
+                showMessage('零用金餘額已達或超過定額，無需補款。', 'info');
+            }
+        });
+
+        // Initialize display on load
+        updateDisplay();
+        renderTransactions();
+    </script>
+</body>
+</html>

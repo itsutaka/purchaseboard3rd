@@ -1,0 +1,156 @@
+[debug] [2025-06-08T11:32:51.476Z] ----------------------------------------------------------------------
+[debug] [2025-06-08T11:32:51.477Z] Command:       /Users/kih/.nvm/versions/node/v22.15.0/bin/node /Users/kih/.nvm/versions/node/v22.15.0/bin/firebase emulators:start
+[debug] [2025-06-08T11:32:51.477Z] CLI Version:   14.4.0
+[debug] [2025-06-08T11:32:51.477Z] Platform:      darwin
+[debug] [2025-06-08T11:32:51.477Z] Node Version:  v22.15.0
+[debug] [2025-06-08T11:32:51.477Z] Time:          Sun Jun 08 2025 19:32:51 GMT+0800 (Taipei Standard Time)
+[debug] [2025-06-08T11:32:51.478Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-06-08T11:32:51.560Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-06-08T11:32:51.560Z] > authorizing via signed-in user (itsutaka@gmail.com)
+[debug] [2025-06-08T11:32:51.658Z] openjdk version "17.0.15" 2025-04-15
+
+[debug] [2025-06-08T11:32:51.659Z] OpenJDK Runtime Environment Homebrew (build 17.0.15+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.15+0, mixed mode, sharing)
+
+[debug] [2025-06-08T11:32:51.663Z] Parsed Java major version: 17
+[info] i  emulators: Starting emulators: auth, functions, firestore, hosting, extensions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth, functions, firestore, hosting, extensions"}}
+[debug] [2025-06-08T11:32:51.664Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:51.664Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:51.665Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bqgracechurch/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2025-06-08T11:32:51.665Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bqgracechurch/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/bqgracechurch
+[debug] [2025-06-08T11:32:52.870Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bqgracechurch/services/cloudresourcemanager.googleapis.com 200
+[debug] [2025-06-08T11:32:52.870Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bqgracechurch/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2025-06-08T11:32:52.870Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:52.870Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:52.870Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/bqgracechurch [none]
+[debug] [2025-06-08T11:32:53.759Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/bqgracechurch 200
+[debug] [2025-06-08T11:32:53.760Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/bqgracechurch {"projectNumber":"751512628182","projectId":"bqgracechurch","lifecycleState":"ACTIVE","name":"bqgracechurch","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-05-08T16:05:50.460395Z"}
+[debug] [2025-06-08T11:32:54.029Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.029Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.030Z] [firestore] Firestore Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.030Z] [firestore.websocket] websocket server for firestore only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.030Z] [hosting] Hosting Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.030Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"hosting":[{"address":"127.0.0.1","family":"IPv4","port":5002}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-06-08T11:32:54.031Z] [hub] writing locator at /var/folders/xb/ccxdp1yj3jxdd45zs013qvhw0000gp/T/hub-bqgracechurch.json
+[debug] [2025-06-08T11:32:54.033Z] [Extensions] Started Extensions emulator, this is a noop.
+[debug] [2025-06-08T11:32:54.134Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.134Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.134Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-08T11:32:54.134Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"hosting":[{"address":"127.0.0.1","family":"IPv4","port":5002}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] ⚠  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, database, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, database, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2025-06-08T11:32:54.137Z] defaultcredentials: writing to file /Users/kih/.config/firebase/itsutaka_gmail_com_application_default_credentials.json
+[debug] [2025-06-08T11:32:54.138Z] Setting GAC to /Users/kih/.config/firebase/itsutaka_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to /Users/kih/.config/firebase/itsutaka_gmail_com_application_default_credentials.json"}}
+[debug] [2025-06-08T11:32:54.138Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:54.138Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:54.139Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/adminSdkConfig [none]
+[debug] [2025-06-08T11:32:54.472Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/adminSdkConfig 200
+[debug] [2025-06-08T11:32:54.472Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/adminSdkConfig {"projectId":"bqgracechurch","storageBucket":"bqgracechurch.firebasestorage.app"}
+[debug] [2025-06-08T11:32:54.494Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-06-08T11:32:54.495Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
+[debug] [2025-06-08T11:32:54.495Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","/Users/kih/.cache/firebase/emulators/cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",8080,"--websocket_port",9150,"--project_id","bqgracechurch","--rules","/Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/firestore.rules","--single_project_mode",true,"--functions_emulator","127.0.0.1:5001"],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":8080} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"/Users/kih/.cache/firebase/emulators/cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",8080,\"--websocket_port\",9150,\"--project_id\",\"bqgracechurch\",\"--rules\",\"/Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/firestore.rules\",\"--single_project_mode\",true,\"--functions_emulator\",\"127.0.0.1:5001\"],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":8080}"}}
+[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
+[debug] [2025-06-08T11:32:55.069Z] Jun 08, 2025 7:32:55 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start
+INFO: Started WebSocket server on ws://127.0.0.1:9150
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Jun 08, 2025 7:32:55 PM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start\nINFO: Started WebSocket server on ws://127.0.0.1:9150\n"}}
+[debug] [2025-06-08T11:32:55.078Z] API endpoint: http:// {"metadata":{"emulator":{"name":"firestore"},"message":"API endpoint: http://"}}
+[debug] [2025-06-08T11:32:55.079Z] 127.0.0.1:8080
+If you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:
+
+   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+
+If you are running a Firestore in Datastore Mode project, run:
+
+   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080
+
+Note: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.
+Dev App Server is now running.
+
+ {"metadata":{"emulator":{"name":"firestore"},"message":"127.0.0.1:8080\nIf you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:\n\n   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080\n\nIf you are running a Firestore in Datastore Mode project, run:\n\n   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080\n\nNote: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.\nDev App Server is now running.\n\n"}}
+[info] ✔  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
+[debug] [2025-06-08T11:32:57.594Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:57.594Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:57.594Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/bqgracechurch/sites 
+[debug] [2025-06-08T11:32:58.062Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/bqgracechurch/sites 200
+[debug] [2025-06-08T11:32:58.062Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/bqgracechurch/sites {"sites":[{"name":"projects/bqgracechurch/sites/bqgracechurch","defaultUrl":"https://bqgracechurch.web.app","appId":"1:751512628182:web:7f6991cf5f066dfd821277","type":"DEFAULT_SITE"},{"name":"projects/bqgracechurch/sites/bqpurchase","defaultUrl":"https://bqpurchase.web.app","appId":"1:751512628182:web:a52e95290e5b8217821277","type":"USER_SITE"}]}
+[debug] [2025-06-08T11:32:58.063Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:58.063Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:58.063Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/webApps/1:751512628182:web:7f6991cf5f066dfd821277/config [none]
+[debug] [2025-06-08T11:32:58.658Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/webApps/1:751512628182:web:7f6991cf5f066dfd821277/config 200
+[debug] [2025-06-08T11:32:58.658Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch/webApps/1:751512628182:web:7f6991cf5f066dfd821277/config {"projectId":"bqgracechurch","appId":"1:751512628182:web:7f6991cf5f066dfd821277","storageBucket":"bqgracechurch.firebasestorage.app","apiKey":"AIzaSyALS2VZcCRA8u7az9ZVNGFCtkLPvHjlERI","authDomain":"bqgracechurch.firebaseapp.com","messagingSenderId":"751512628182","measurementId":"G-990DPWG4E9"}
+[debug] [2025-06-08T11:32:58.668Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:58.668Z] Checked if tokens are valid: true, expires at: 1749385053350
+[debug] [2025-06-08T11:32:58.669Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch [none]
+[debug] [2025-06-08T11:32:58.912Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch 200
+[debug] [2025-06-08T11:32:58.913Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/bqgracechurch {"projectId":"bqgracechurch","projectNumber":"751512628182","displayName":"bqgracechurch","name":"projects/bqgracechurch","resources":{"hostingSite":"bqgracechurch"},"state":"ACTIVE","etag":"1_e9a8f278-bab9-48d4-968f-c23f285971d9"}
+[info] i  hosting[bqgracechurch]: Serving hosting files from: bqgracechurchmainpage {"metadata":{"emulator":{"name":"hosting"},"message":"Serving hosting files from: \u001b[1mbqgracechurchmainpage\u001b[22m"}}
+[info] ✔  hosting[bqgracechurch]: Local server: http://127.0.0.1:5002 {"metadata":{"emulator":{"name":"hosting"},"message":"Local server: \u001b[4m\u001b[1mhttp://127.0.0.1:5002\u001b[22m\u001b[24m"}}
+[info] i  hosting[bqpurchase]: Serving hosting files from: dist/client {"metadata":{"emulator":{"name":"hosting"},"message":"Serving hosting files from: \u001b[1mdist/client\u001b[22m"}}
+[info] ✔  hosting[bqpurchase]: Local server: http://127.0.0.1:5007 {"metadata":{"emulator":{"name":"hosting"},"message":"Local server: \u001b[4m\u001b[1mhttp://127.0.0.1:5007\u001b[22m\u001b[24m"}}
+[debug] [2025-06-08T11:32:58.985Z] [Extensions] Connecting Extensions emulator, this is a noop.
+[info] i  functions: Watching "/Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"/Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/functions\" for Cloud Functions..."}}
+[debug] [2025-06-08T11:32:58.987Z] Validating nodejs source
+[debug] [2025-06-08T11:32:59.442Z] > [functions] package.json contents: {
+  "name": "purchaseboard-functions",
+  "version": "1.0.0",
+  "description": "Firebase Functions for Purchaseboard",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.1",
+    "firebase-functions": "^6.3.2"
+  },
+  "engines": {
+    "node": "22"
+  }
+}
+[debug] [2025-06-08T11:32:59.442Z] Building nodejs source
+[debug] [2025-06-08T11:32:59.442Z] Failed to find version of module node: reached end of search path /Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/functions/node_modules
+[info] ✔  functions: Using node@22 from host. 
+[debug] [2025-06-08T11:32:59.448Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-06-08T11:32:59.452Z] Found firebase-functions binary at '/Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8488
+
+[error] TypeError: admin.initializeApp is not a function
+    at file:///Users/kih/Documents/purchaseboard_b_jules/firebase-intergration/purchaseboard/functions/index.js:6:7
+    at ModuleJobSync.runSync (node:internal/modules/esm/module_job:400:35)
+    at ModuleLoader.importSyncForRequire (node:internal/modules/esm/loader:427:47)
+    at loadESMFromCJS (node:internal/modules/cjs/loader:1561:24)
+    at Module._compile (node:internal/modules/cjs/loader:1712:5)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+
+[debug] [2025-06-08T11:33:00.072Z] Got response code 400; body Failed to generate manifest from function source: TypeError: admin.initializeApp is not a function
+[error] ⬢  functions: Failed to load function definition from source: FirebaseError: Functions codebase could not be analyzed successfully. It may have a syntax or runtime error {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: Functions codebase could not be analyzed successfully. It may have a syntax or runtime error"}}
+[debug] [2025-06-08T11:33:04.097Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┬──────────────────────────────────┐
+│ Emulator       │ Host:Port      │ View in Emulator UI              │
+├────────────────┼────────────────┼──────────────────────────────────┤
+│ Authentication │ 127.0.0.1:9099 │ http://127.0.0.1:4000/auth       │
+├────────────────┼────────────────┼──────────────────────────────────┤
+│ Functions      │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions  │
+├────────────────┼────────────────┼──────────────────────────────────┤
+│ Firestore      │ 127.0.0.1:8080 │ http://127.0.0.1:4000/firestore  │
+├────────────────┼────────────────┼──────────────────────────────────┤
+│ Hosting        │ 127.0.0.1:5002 │ n/a                              │
+├────────────────┼────────────────┼──────────────────────────────────┤
+│ Extensions     │ 127.0.0.1:5001 │ http://127.0.0.1:4000/extensions │
+└────────────────┴────────────────┴──────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500, 9150, 5007
+┌─────────────────────────┬───────────────┬─────────────────────┐
+│ Extension Instance Name │ Extension Ref │ View in Emulator UI │
+└─────────────────────────┴───────────────┴─────────────────────┘
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>零用金管理辦法互動指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Visualization & Content Choices:
+        - Article I (Establishment): Tab content (HTML text). Goal: Inform. Method: HTML/Tailwind.
+        - Article II (Payment): Tab content (HTML text), with key sub-points (scope, limit, receipt, record) clearly delineated. Goal: Inform. Method: HTML/Tailwind.
+        - Article III (Reconciliation): Tab content (HTML text). Goal: Inform. Method: HTML/Tailwind.
+        - Article IV (Control & Audit): Tab content (HTML text). Goal: Inform. Method: HTML/Tailwind.
+        - Article V (Implementation): Tab content (HTML text). Goal: Inform. Method: HTML/Tailwind.
+        - Key Figures: Displayed as prominent text/cards (NT$10,000-50,000 establishment, NT$6,000 payment limit). Goal: Inform. Method: HTML/Tailwind.
+        - Process Flow Overview: A flowchart made with HTML divs and Tailwind for styling to show stages: Request -> Approval -> Disbursement -> Usage & Recording -> Reconciliation -> Replenishment. Goal: Organize/Inform. Method: HTML/Tailwind.
+        No charts are needed as the source is purely textual/procedural. All diagrams will be HTML/CSS based. -->
+    <style>
+        body {
+            font-family: 'Inter', '微軟正黑體', 'Microsoft JhengHei', sans-serif;
+        }
+        .tab-button.active {
+            background-color: #2563eb; /* blue-600 */
+            color: #eff6ff; /* blue-50 */
+        }
+        .tab-button {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .flow-step {
+            min-width: 100px;
+        }
+        .flow-arrow {
+            font-size: 1.5rem; /* Unicode arrow size */
+            line-height: 1;
+        }
+        /* Ensure content max-width and centering */
+        .main-container {
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+         /* Responsive text size */
+        h1 { font-size: 1.875rem; /* text-3xl */ }
+        h2 { font-size: 1.5rem; /* text-2xl */ }
+        h3 { font-size: 1.25rem; /* text-xl */ }
+        p, li, span, div:not(h1,h2,h3,button,input,label,textarea) { font-size: 1rem; /* text-base */ }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.5rem; /* text-2xl */ }
+            h2 { font-size: 1.25rem; /* text-xl */ }
+            h3 { font-size: 1.125rem; /* text-lg */ }
+            p, li, span, div:not(h1,h2,h3,button,input,label,textarea) { font-size: 0.9375rem; /* slightly smaller than base for mobile */ }
+            .flow-step {
+                min-width: 80px;
+                padding: 0.5rem;
+            }
+            .flow-arrow {
+                font-size: 1.25rem;
+            }
+            .tab-button {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800 antialiased">
+    <div class="main-container container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-700">社團法人主恩改革宗長老會</h1>
+            <h2 class="text-2xl md:text-3xl font-semibold text-stone-700 mt-2">零用金管理辦法互動指南</h2>
+        </header>
+
+        <section id="introduction" class="mb-8 p-6 bg-white rounded-lg shadow">
+            <h3 class="text-xl font-semibold mb-3 text-blue-600">歡迎使用零用金管理辦法互動指南</h3>
+            <p class="text-stone-700 leading-relaxed">
+                本指南旨在協助本社同工快速了解與查閱「零用金管理辦法」之相關規定。您可以透過下方的重點資訊摘要、作業流程圖以及各條文分頁，輕鬆掌握零用金的申請、使用、核銷及管理等重要環節。
+                透過互動式的設計，我們期望能讓繁瑣的規章制度變得更加清晰易懂，方便您在實際作業中正確有效地遵循相關程序。
+            </p>
+        </section>
+
+        <section id="key-info" class="mb-8 p-6 bg-white rounded-lg shadow">
+            <h3 class="text-xl font-semibold mb-4 text-blue-600">重點資訊摘要</h3>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-blue-50 p-4 rounded-md shadow-sm">
+                    <h4 class="font-semibold text-blue-700">零用金定額建議</h4>
+                    <p class="text-stone-700">新台幣 NT$10,000 ~ NT$50,000</p>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-md shadow-sm">
+                    <h4 class="font-semibold text-amber-700">單筆支付上限</h4>
+                    <p class="text-stone-700">新台幣 NT$6,000</p>
+                    <p class="text-xs text-stone-500">特殊情況超額需理事會同意</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="process-flow" class="mb-8 p-6 bg-white rounded-lg shadow">
+            <h3 class="text-xl font-semibold mb-6 text-center text-blue-600">零用金主要作業流程</h3>
+            <p class="text-center text-stone-600 mb-6">
+                以下流程圖概述了零用金從建立申請到最終補款的主要步驟。您可以點擊各條文分頁查看每個環節的詳細規定。
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-center text-sm md:text-base">
+                <div class="flow-step bg-sky-100 text-sky-700 p-3 rounded-md shadow">需求申請<br>& 定額建議</div>
+                <div class="flow-arrow text-sky-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-sky-100 text-sky-700 p-3 rounded-md shadow">審核與核准<br>(秘書長/財務/權責人員)</div>
+                <div class="flow-arrow text-sky-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-teal-100 text-teal-700 p-3 rounded-md shadow">指定保管人<br>& 簽署責任書</div>
+                <div class="flow-arrow text-teal-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-teal-100 text-teal-700 p-3 rounded-md shadow">首次撥款</div>
+                <div class="flow-arrow text-teal-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-emerald-100 text-emerald-700 p-3 rounded-md shadow">支付作業<br>(取得憑證/記錄)</div>
+                <div class="flow-arrow text-emerald-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-indigo-100 text-indigo-700 p-3 rounded-md shadow">核銷作業<br>(整理憑證/填申請單)</div>
+                <div class="flow-arrow text-indigo-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-indigo-100 text-indigo-700 p-3 rounded-md shadow">審核流程<br>(初審/財務複核)</div>
+                <div class="flow-arrow text-indigo-500 self-center font-bold">&rarr;</div>
+                <div class="flow-step bg-purple-100 text-purple-700 p-3 rounded-md shadow">補款作業</div>
+            </div>
+        </section>
+
+        <div id="tabs-container" class="mb-8">
+            <div class="flex flex-wrap border-b border-stone-300 mb-[-1px]">
+                <button class="tab-button text-sm md:text-base py-2 px-4 text-stone-600 hover:bg-stone-200 focus:outline-none rounded-t-md active" onclick="openTab(event, 'tab1')">第一條：建立與保管</button>
+                <button class="tab-button text-sm md:text-base py-2 px-4 text-stone-600 hover:bg-stone-200 focus:outline-none rounded-t-md" onclick="openTab(event, 'tab2')">第二條：支付作業</button>
+                <button class="tab-button text-sm md:text-base py-2 px-4 text-stone-600 hover:bg-stone-200 focus:outline-none rounded-t-md" onclick="openTab(event, 'tab3')">第三條：核銷與補款</button>
+                <button class="tab-button text-sm md:text-base py-2 px-4 text-stone-600 hover:bg-stone-200 focus:outline-none rounded-t-md" onclick="openTab(event, 'tab4')">第四條：管理與稽核</button>
+                <button class="tab-button text-sm md:text-base py-2 px-4 text-stone-600 hover:bg-stone-200 focus:outline-none rounded-t-md" onclick="openTab(event, 'tab5')">第五條：施行要點</button>
+            </div>
+
+            <div id="tab-contents" class="bg-white p-6 rounded-b-lg rounded-tr-lg shadow">
+                <div id="tab1" class="tab-content">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-600">第一條：零用金之建立與保管人指定</h3>
+                    <p class="text-sm text-stone-500 mb-4">本條款規範了零用金的申請設立流程、保管人如何確認，以及首次撥款和安全保管的具體要求，確保零用金從源頭開始便有妥善管理。</p>
+                    <div class="space-y-3 text-stone-700 leading-relaxed">
+                        <p><strong>1. 申請與核准:</strong> 由需求同工提出申請，詳述需要指定人員保管零用金之理由，例如：支應社團法人主恩改革宗長老會（以下簡稱本社）會務活動、行政庶務或現場臨時性現金支付需求，建議保管人選、以及預計保管之零用金定額（建議根據過往經驗或活動預算，設定足以應付數次小額支付，但不過高之固定金額，例如新台幣 NT$10,000 ~ NT$50,000）。申請案需依本社內部分層負責授權規定，經秘書長及財務人員（或財務委員會）審核，並呈報【理事長/常務理事/依本社章程或理事會決議之權責人員】核准後始得設立。若預期會有現金需求大於固定金額，則歸類為大額支出，也依照此流程於付款前提早另立一案逕行申請。</p>
+                        <p><strong>2. 保管人確認:</strong> 經正式指定之保管人，需簽署本社「零用金保管責任書」，以確認其已充分瞭解並同意遵守本管理辦法及相關規定。</p>
+                        <p><strong>3. 首次撥款:</strong> 本社財務人員（或出納）應依核准之定額，將首次現金零用金撥付予保管人，保管人需簽收確認。財務人員應詳實記錄此筆撥款。</p>
+                        <p><strong>4. 安全保管:</strong> 保管人必須將本零用金獨立存放於本社指定之上鎖容器（如：現金箱、帶鎖抽屜或保險櫃）中，鑰匙由保管人專責妥善保管，非經授權不得將現金或鑰匙交付他人。嚴禁將本零用金與私人款項或其他非本社款項混合存放或挪用。本零用金僅能用於支付經本社核准之公務相關支出。</p>
+                    </div>
+                </div>
+
+                <div id="tab2" class="tab-content" style="display:none;">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-600">第二條：支付作業</h3>
+                     <p class="text-sm text-stone-500 mb-4">本條款詳細說明了零用金的適用範圍、單筆支付上限，以及在支付過程中如何取得合法憑證和進行支付記錄，旨在規範零用金的合規使用。</p>
+                    <div class="space-y-3 text-stone-700 leading-relaxed">
+                        <p><strong>1. 適用範圍:</strong> 本零用金明確規定僅能用於「事先約定或臨時發生，且收款廠商/個人明確要求現金支付之小額款項或事先約定之大額支付款項，無法採用轉帳、劃撥方式進行付款」之情形（例如：會務活動所需之臨時採買、郵資、交通費、講座講師臨時雜支、小型維修工資、運費、臨時少量庶務用品等）。</p>
+                        <p><strong>2. 單筆支付上限設定:</strong> 本社設定零用金單筆支付上限為新台幣 NT$6,000元整。若遇特殊情況確需動用本零用金支付超過單筆上限之款項，必須事先取得理事會同意。</p>
+                        <p><strong>3. 取得合法憑證:</strong> 支付任何款項時, 保管人必須向收款方索取符合臺灣稅法及本社財務規定之合法憑證（如：統一發票、免用統一發票收據、或其他經認可之正式收據）。憑證上需清晰載明：收款單位/個人之名稱及統一編號（或身分證號）、交易日期、消費內容（品名、規格、數量、單價）、總金額（含稅，並註明大小寫），且應加蓋收款單位之統一發票專用章或正式店章/負責人章。若廠商僅能提供普通收據，務必確認上述資訊齊全並有廠商蓋章。若遇極少數情況（如偏遠地區小販、農產品交易等）確實無法取得前述憑證，應於「零用金支付記錄」上詳述理由，並盡可能取得第三方人證或拍照存證，且需依本社規定經理事會特別核准後方可報支。</p>
+                        <p><strong>4. 支付記錄:</strong> 保管人需使用本社規定之「零用金支付記錄」（可為紙本簿冊或指定之電子表單/App）。每一筆支付，不論金額大小，都必須立即、詳實記錄以下資訊：</p>
+                        <ul class="list-disc list-inside ml-4 space-y-1">
+                            <li>支付日期 (Date)</li>
+                            <li>請款人 (Payee A)</li>
+                            <li>收款廠商/對象 (Payee B)</li>
+                            <li>會計科目 (Description/Purpose)</li>
+                            <li>支付金額 (Amount Paid)</li>
+                            <li>記錄後現金餘額 (Remaining Balance)</li>
+                            <li>保管人簽名/註記 (Payer's Signature/Note)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="tab3" class="tab-content" style="display:none;">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-600">第三條：核銷與補款</h3>
+                    <p class="text-sm text-stone-500 mb-4">本條款闡述了零用金核銷的時機、準備核銷文件所需的項目與核對公式、詳細的審核流程，以及最終的補款作業，確保零用金帳目清晰並及時補充。</p>
+                    <div class="space-y-3 text-stone-700 leading-relaxed">
+                        <p><strong>1. 核銷時機:</strong> 當本零用金餘額降低至預設之最低水位（例如：原定額之20%），或依本社規定之固定週期（例如：每週末、每月初、或每次大型活動結束後）必須辦理核銷。</p>
+                        <p><strong>2. 準備核銷文件:</strong> 保管人應將核銷期間內所有支付之原始憑證（發票、收據等）按「零用金支付記錄」之順序整理、編號並黏貼（若為紙本）。填寫本社標準格式之「零用金核銷暨補款申請單」，內容應包含：保管人姓名、職稱/會員編號、核銷期間、清點日期、期初零用金定額、本次核銷憑證總金額、盤點實存現金餘額、帳面應有現金餘額、差異金額（若有，需說明原因）、以及申請補款金額。核對公式：期初定額 - 本次核銷總額 = 帳面應有現金餘額（必須與實存現金 + 憑證總額相符）。</p>
+                        <p><strong>3. 審核流程:</strong> 保管人將「零用金核銷暨補款申請單」連同所有原始憑證及「零用金支付記錄」（影本或正本供查驗）提交給本社規定之初審人員審核簽署。初審人員確認無誤後，轉交本社財務人員（或財務委員會/指定財務審核人員）進行專業複核。財務人員需確認：憑證之合法性與合規性、金額計算之正確性、支出與記錄是否相符、是否符合本社章程及相關財務規定。</p>
+                        <p><strong>4. 補款作業:</strong> 經財務人員（或財務委員會/指定財務審核人員）審核無誤後，依「零用金核銷暨補款申請單」上核准之補款金額，由本社財務人員（或出納）將現金撥付給保管人，使其手上持有之現金恢復至原零用金定額。保管人點收補款現金無誤後應簽收。財務人員應將已核銷之各項費用登載入帳。</p>
+                    </div>
+                </div>
+
+                <div id="tab4" class="tab-content" style="display:none;">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-600">第四條：管理與稽核</h3>
+                    <p class="text-sm text-stone-500 mb-4">本條款強調保管人的日常職責、定期與不定期的抽查機制、保管人異動時的處理程序，以及辦法的宣導與修訂要求，旨在建立完善的監督與持續改進機制。</p>
+                    <div class="space-y-3 text-stone-700 leading-relaxed">
+                        <p><strong>1. 保管人職責:</strong> 保管人需隨時確保「手上庫存現金」加上「已支付但尚未核銷之有效憑證總額」永遠等於「零用金定額」。</p>
+                        <p><strong>2. 定期/不定期抽查:</strong> 本社財務人員、內部稽核人員（若有設置）或監事（會）指派之人員，應定期（例如：每月）及不定期（突襲檢查）對保管人所保管之零用金進行盤點，確認帳實（現金 + 單據）是否相符，並檢視支付記錄與憑證是否合規。盤點及抽查結果應作成書面記錄，如有異常應立即通報相關權責主管及監事（會）。</p>
+                        <p><strong>3. 保管人異動:</strong> 若保管人職務異動、離職或離任，必須依本社規定辦理零用金之結清、盤點與移交（或繳回）程序。此程序應由財務人員及或監事會指派之監交人共同辦理，確認無誤後解除原保管人之責任。</p>
+                        <p><strong>4. 辦法宣導與修訂:</strong> 本管理辦法應讓所有保管人、相關業務承辦人、理監事充分了解。本辦法應依本社章程、相關法規及實際運作需要，由財務組至少每年檢討一次，並視需要提報理事會（或會員大會，依章程規定）審議修訂。</p>
+                    </div>
+                </div>
+
+                <div id="tab5" class="tab-content" style="display:none;">
+                    <h3 class="text-xl font-semibold mb-3 text-blue-600">第五條：施行要點</h3>
+                    <p class="text-sm text-stone-500 mb-4">本條款列出了確保本辦法有效施行的關鍵措施，包括對相關人員的教育訓練、所需表單的標準化、各級簽核人員責任的落實，以及對未盡事宜的處理原則。</p>
+                    <div class="space-y-3 text-stone-700 leading-relaxed">
+                        <p><strong>1. 教育訓練:</strong> 對新任保管人及相關人員進行清楚之教育訓練，確保其了解本辦法所有流程、表單填寫及應負責任。</p>
+                        <p><strong>2. 表單標準化:</strong> 設計本社標準化之「零用金支付記錄」（或規範電子記錄系統之操作標準）、「零用金核銷暨補款申請單」及「零用金保管責任書」。</p>
+                        <p><strong>3. 簽核權責落實:</strong> 強調各級簽核人員（含秘書長、財務人員、理事、監事等）於相關文件上簽署之責任，該簽署代表已就其權責範圍內確認支出之合理性、必要性及合規性。</p>
+                        <p><strong>4. 遵守法規:</strong> 本辦法未盡事宜，悉依本社章程、相關財務處理規定及中華民國相關法令規章辦理。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-12 py-4 border-t border-stone-300">
+            <p class="text-sm text-stone-500">&copy; <span id="currentYear"></span> 社團法人主恩改革宗長老會. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        function openTab(event, tabName) {
+            var i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].classList.remove("active");
+            }
+            document.getElementById(tabName).style.display = "block";
+            event.currentTarget.classList.add("active");
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.tab-button').click(); 
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>

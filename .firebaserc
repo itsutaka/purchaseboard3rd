@@ -1,5 +1,18 @@
 {
   "projects": {
-    "default": "YOUR_FIREBASE_PROJECT_ID"
-  }
+    "default": "bqgracechurch"
+  },
+  "targets": {
+    "bqgracechurch": {
+      "hosting": {
+        "bqpurchase": [
+          "bqpurchase"
+        ],
+        "bqgracechurch": [
+          "bqgracechurch"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
