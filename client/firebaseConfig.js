@@ -3,15 +3,29 @@ import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
-// 您的 .env.local 檔案中的環境變數
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_API_KEY,
-  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_APP_ID,
-};
+// 根據環境決定要使用的 Firebase 設定
+let firebaseConfig;
+
+if (import.meta.env.DEV) {
+  // 開發模式：使用一個最小化的模擬器專用設定
+  // 這裡只需要提供正確的 projectId 即可，其他可以是任意假值
+  console.log("開發模式：使用模擬器專用設定進行初始化。");
+  firebaseConfig = {
+    projectId: import.meta.env.VITE_PROJECT_ID, // 從 .env.local 讀取，確保 projectId 正確
+    apiKey: "emulator-api-key", // 假的 API Key
+    authDomain: `${import.meta.env.VITE_PROJECT_ID}.firebaseapp.com`,
+  };
+} else {
+  // 生產模式：使用您 .env.local 檔案中的真實金鑰
+  firebaseConfig = {
+    apiKey: import.meta.env.VITE_API_KEY,
+    authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_APP_ID,
+  };
+}
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);

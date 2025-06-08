@@ -1,3 +1,7 @@
 node_modules/
 .env.local
 functions/node_modules/
+firebase-debug.log
+firestore-debug.log
+functions/firebase-debug.log
+functions/firestore-debug.log
