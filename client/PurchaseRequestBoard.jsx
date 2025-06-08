@@ -55,23 +55,38 @@ const PurchaseRequestBoard = () => {
   };
 
   const fetchRequests = useCallback(async () => {
+    setIsLoadingRequests(true); // 將 isLoadingRequests 移到 try 之前
+    setFetchError(null);       // 清除之前的錯誤
+
     try {
       const response = await axios.get('/api/requirements');
-      setRequests(response.data);
-      const purchased = response.data.filter(req => req.status === 'purchased');
-      setPurchaseRecords(purchased.map(p => ({
-        id: p.id,
-        title: p.title || p.text,
-        requester: p.requesterName || p.requester,
-        purchaseAmount: p.purchaseAmount,
-        requestDate: p.createdAt,
-        purchaseDate: p.purchaseDate,
-        purchaserName: p.purchaserName,
-        accountingCategory: p.accountingCategory
-      })));
+
+      // **** 重要修改：檢查 response.data 是否為陣列 ****
+      if (Array.isArray(response.data)) {
+        setRequests(response.data);
+        const purchased = response.data.filter(req => req.status === 'purchased');
+        setPurchaseRecords(purchased.map(p => ({
+          id: p.id,
+          title: p.title || p.text,
+          requester: p.requesterName || p.requester,
+          purchaseAmount: p.purchaseAmount,
+          requestDate: p.createdAt,
+          purchaseDate: p.purchaseDate,
+          purchaserName: p.purchaserName,
+          accountingCategory: p.accountingCategory
+        })));
+      } else {
+        // 如果 response.data 不是陣列，將其視為錯誤或空資料
+        console.error('API response for /api/requirements is not an array:', response.data);
+        setFetchError('無法獲取採購請求：資料格式不正確。');
+        setRequests([]); // *** 設定為空陣列以避免後續渲染錯誤 ***
+        setPurchaseRecords([]); // 也清空購買記錄
+      }
     } catch (error) {
       console.error('Error fetching purchase requests:', error);
-      setFetchError('Failed to load purchase requests. ' + (error.response?.data?.message || error.message));
+      setFetchError('無法載入採購請求。 ' + (error.response?.data?.message || error.message));
+      setRequests([]); // *** 發生錯誤時，也設定為空陣列 ***
+      setPurchaseRecords([]); // 清空購買記錄
     } finally {
       setIsLoadingRequests(false);
     }

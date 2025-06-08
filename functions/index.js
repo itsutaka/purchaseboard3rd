@@ -128,6 +128,20 @@ app.get('/api/requirements', async (req, res) => {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();
     const requirementsPromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
+      let requesterName = data.requesterName; // 從既有資料開始
+
+      if (!requesterName && data.userId) { // 只有當 requesterName 不存在且有 userId 時才嘗試獲取
+        try {
+          requesterName = await getUserDisplayName(data.userId);
+        } catch (userError) {
+          // 即使 getUserDisplayName 內部發生了無法預料的錯誤（例如網路問題、服務暫時不可用）
+          // 或者如果 getUserDisplayName 被修改為可能拋出錯誤
+          functions.logger.error(`Failed to get display name for UID: ${data.userId} in requirement ${doc.id}`, userError);
+          requesterName = 'Unknown User (Error)'; // 或其他標識符
+        }
+      } else if (!requesterName) {
+        requesterName = 'Anonymous'; // 如果連 userId 都沒有
+      }
 
       // Fetch comments for each requirement
       const commentsSnapshot = await db.collection('requirements').doc(doc.id).collection('comments').orderBy('createdAt', 'asc').get();
@@ -137,13 +151,10 @@ app.get('/api/requirements', async (req, res) => {
         createdAt: commentDoc.data().createdAt?.toDate().toISOString(),
       }));
 
-      // Fetch requester name if not already stored or to ensure it's up-to-date
-      const requesterName = data.requesterName || await getUserDisplayName(data.userId);
-
       return {
         id: doc.id,
         ...data,
-        requesterName, // Add/overwrite requesterName
+        requesterName, // 使用處理過的 requesterName
         comments, // Add comments array
         createdAt: data.createdAt?.toDate().toISOString(),
         updatedAt: data.updatedAt?.toDate().toISOString(),
@@ -152,8 +163,8 @@ app.get('/api/requirements', async (req, res) => {
     const requirements = await Promise.all(requirementsPromises);
     res.status(200).json(requirements);
   } catch (error) {
-    functions.logger.error('Error fetching requirements:', error);
-    res.status(500).json({ message: 'Error fetching requirements', error: error.message });
+    functions.logger.error('Critical error fetching requirements list:', error);
+    res.status(500).json({ message: 'Critical error fetching requirements list', error: error.message });
   }
 });
 
