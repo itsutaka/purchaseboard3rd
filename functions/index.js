@@ -124,8 +124,16 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
 
 // GET /api/requirements (Read All)
 app.get('/api/requirements', async (req, res) => {
+  functions.logger.info('Received request for /api/requirements'); // 新增日誌
   try {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();
+    functions.logger.info(`Firestore snapshot fetched. Empty: ${snapshot.empty}. Size: ${snapshot.size}`); // 新增日誌
+
+    if (snapshot.empty) {
+      functions.logger.info('No requirements found, returning empty array.'); // 新增日誌
+      return res.status(200).json([]); // 確保空情況回傳陣列
+    }
+
     const requirementsPromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
       let requesterName = data.requesterName; // 從既有資料開始
@@ -161,10 +169,12 @@ app.get('/api/requirements', async (req, res) => {
       };
     });
     const requirements = await Promise.all(requirementsPromises);
+    functions.logger.info(`Successfully processed ${requirements.length} requirements. Returning them.`); // 新增日誌
     res.status(200).json(requirements);
   } catch (error) {
-    functions.logger.error('Critical error fetching requirements list:', error);
-    res.status(500).json({ message: 'Critical error fetching requirements list', error: error.message });
+    functions.logger.error('Error in /api/requirements:', error); // 你已經有這個了，很好
+    // 確保錯誤時也回傳 JSON
+    return res.status(500).json({ message: 'Error fetching requirements from server', error: error.message, stack: error.stack }); // 可以考慮加入 stack trace 以便調試
   }
 });
 
