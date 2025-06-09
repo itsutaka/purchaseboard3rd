@@ -10,9 +10,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy API requests from React dev server to Node.js server
-      // Example: '/api': 'http://localhost:3001'
-      // (if your Node server runs on 3001 and React dev on 5173)
+      '/api': {
+        target: 'http://127.0.0.1:5007', // 指向您的 Functions 模擬器
+        changeOrigin: true, // 建議加入，有助於解決一些 CORS 問題
+      }
     }
   }
 });
