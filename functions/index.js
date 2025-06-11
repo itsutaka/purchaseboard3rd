@@ -92,9 +92,9 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
       return res.status(404).json({ message: 'Requirement not found' });
     }
 
-    if (doc.data().userId !== req.user.uid) {
-      return res.status(403).json({ message: 'Forbidden. You can only update your own requirements.' });
-    }
+    //if (doc.data().userId !== req.user.uid) {
+    //  return res.status(403).json({ message: 'Forbidden. You can only update your own requirements.' });
+    //}
 
     // Ensure server timestamp for updatedAt
     dataToUpdate.updatedAt = admin.firestore.FieldValue.serverTimestamp();
@@ -121,7 +121,46 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
   }
 });
 
+// DELETE /api/requirements/:id (刪除一筆採購需求) - 受保護
+app.delete('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requirementRef = db.collection('requirements').doc(id);
+    const doc = await requirementRef.get();
 
+    if (!doc.exists) {
+      return res.status(404).json({ message: '找不到該採購需求' });
+    }
+
+    // 權限檢查：確保只有建立者本人才能刪除
+    if (doc.data().userId !== req.user.uid) {
+      return res.status(403).json({ message: '權限不足，您只能刪除自己建立的需求。' });
+    }
+
+    // (建議步驟) Firestore 不會自動刪除子集合，所以在刪除文件前，先手動刪除其下的所有留言
+    const commentsRef = requirementRef.collection('comments');
+    const commentsSnapshot = await commentsRef.get();
+    if (!commentsSnapshot.empty) {
+      const batch = db.batch();
+      commentsSnapshot.docs.forEach(commentDoc => {
+        batch.delete(commentDoc.ref);
+      });
+      await batch.commit();
+      functions.logger.log(`已刪除 ${commentsSnapshot.size} 則與採購需求 ${id} 相關的留言`);
+    }
+
+    // 刪除主文件
+    await requirementRef.delete();
+    functions.logger.log(`採購需求 ${id} 已被用戶 ${req.user.uid} 成功刪除`);
+    
+    // 成功刪除後，回傳 204 No Content 是標準做法
+    res.status(204).send();
+
+  } catch (error) {
+    functions.logger.error('刪除採購需求時發生錯誤:', error);
+    res.status(500).json({ message: '刪除採購需求時發生錯誤', error: error.message });
+  }
+});
 // GET /api/requirements (Read All)
 app.get('/api/requirements', async (req, res) => {
   functions.logger.info('Received request for /api/requirements'); // 新增日誌

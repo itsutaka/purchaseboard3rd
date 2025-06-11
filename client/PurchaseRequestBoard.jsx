@@ -22,6 +22,8 @@ const PurchaseRequestBoard = () => {
   const [isDeletingRequest, setIsDeletingRequest] = useState(false);
   const [isAddingComment, setIsAddingComment] = useState(false);
 
+  const [newStatusForUpdate, setNewStatusForUpdate] = useState(null);
+
   const [showModal, setShowModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showRecordsModal, setShowRecordsModal] = useState(false);
@@ -122,6 +124,7 @@ const PurchaseRequestBoard = () => {
 
   const updateStatus = async (id, newStatus) => {
     setSelectedRequestId(id);
+    setNewStatusForUpdate(newStatus);
     if (newStatus === 'purchased') {
       setUpdateError(null); // Clear previous error before showing new modal
       setPurchaseAmount(''); // Clear previous amount
