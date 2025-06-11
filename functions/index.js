@@ -91,11 +91,33 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
     if (!doc.exists) {
       return res.status(404).json({ message: 'Requirement not found' });
     }
+    
+    const docData = doc.data(); // 取得【文件上】的資料
+    const actionRequesterId = req.user.uid; // 取得【操作者】的資料
+
+    const isReverting = dataToUpdate.status === 'pending'; // 判斷這是否是一個「撤銷」操作
+
+    if (isReverting) {
+    // 開始進行比對
+      const isOwner = docData.userId === actionRequesterId; // 比對操作者是不是文件的擁有者
+      const isPurchaser = docData.purchaserId === actionRequesterId; // 比對操作者是不是文件的購買者
+
+      if (!isOwner && !isPurchaser) {
+    // 如果兩個都不是，就拒絕操作
+        return res.status(403).json({ message: '權限不足，只有建立者或購買者才能撤銷此操作。' });
+     }
+    }
 
     //if (doc.data().userId !== req.user.uid) {
     //  return res.status(403).json({ message: 'Forbidden. You can only update your own requirements.' });
     //}
-
+    // ***** 新增這段邏輯來處理前端發送的 null 值 *****
+    const fieldsToDelete = ['purchaseAmount', 'purchaseDate', 'purchaserName'];
+    for (const field of fieldsToDelete) {
+        if (dataToUpdate[field] === null) {
+            dataToUpdate[field] = admin.firestore.FieldValue.delete();
+        }
+    }
     // Ensure server timestamp for updatedAt
     dataToUpdate.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 

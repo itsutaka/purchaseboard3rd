@@ -140,7 +140,12 @@ const PurchaseRequestBoard = () => {
       setUpdateError(null);
       try {
         const token = await currentUser.getIdToken();
-        const payload = { status: 'pending', purchaseAmount: admin.firestore.FieldValue.delete(), purchaseDate: admin.firestore.FieldValue.delete(), purchaserName: admin.firestore.FieldValue.delete() };
+        const payload = {
+          status: 'pending',
+          purchaseAmount: null,
+          purchaseDate: null,
+          purchaserName: null
+        };
         await axios.put(`/api/requirements/${id}`, payload, { headers: { 'Authorization': `Bearer ${token}` } });
         await fetchRequests();
       } catch (error) {
@@ -166,7 +171,8 @@ const PurchaseRequestBoard = () => {
         status: 'purchased',
         purchaseAmount: parseFloat(purchaseAmount),
         purchaseDate: new Date().toISOString(),
-        purchaserName: purchaserNameInput.trim()
+        purchaserName: purchaserNameInput.trim(),
+        purchaserId: currentUser.uid
       };
       await axios.put(`/api/requirements/${selectedRequestId}`, payload, { headers: { 'Authorization': `Bearer ${token}` } });
       setPurchaseAmount('');
