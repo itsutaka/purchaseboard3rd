@@ -79,66 +79,77 @@ app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// PUT /api/requirements/:id (Update) - Protected
+// purchaseboard/functions/index.js
+
+// PUT /api/requirements/:id (Update) - Protected with Transaction
 app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
   try {
     const { id } = req.params;
     const dataToUpdate = req.body; // e.g., { status, purchaseAmount, text, description, etc. }
-
     const requirementRef = db.collection('requirements').doc(id);
-    const doc = await requirementRef.get();
 
-    if (!doc.exists) {
-      return res.status(404).json({ message: 'Requirement not found' });
-    }
-    
-    const docData = doc.data(); // 取得【文件上】的資料
-    const actionRequesterId = req.user.uid; // 取得【操作者】的資料
-
-    const isReverting = dataToUpdate.status === 'pending'; // 判斷這是否是一個「撤銷」操作
-
-    if (isReverting) {
-    // 開始進行比對
-      const isPurchaser = docData.purchaserId === actionRequesterId; // 比對操作者是不是文件的購買者
-
-      if (!isPurchaser) {
-    // 如果兩個都不是，就拒絕操作
-        return res.status(403).json({ message: '權限不足，只有購買者才能撤銷此操作。' });
-     }
-    }
-
-    //if (doc.data().userId !== req.user.uid) {
-    //  return res.status(403).json({ message: 'Forbidden. You can only update your own requirements.' });
-    //}
-    // ***** 新增這段邏輯來處理前端發送的 null 值 *****
-    const fieldsToDelete = ['purchaseAmount', 'purchaseDate', 'purchaserName'];
-    for (const field of fieldsToDelete) {
-        if (dataToUpdate[field] === null) {
-            dataToUpdate[field] = admin.firestore.FieldValue.delete();
-        }
-    }
-    // Ensure server timestamp for updatedAt
-    dataToUpdate.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-
-    // Handle explicit null values for clearing fields
-    const fieldsToClear = ['purchaseAmount', 'purchaseDate', 'purchaserName'];
-    fieldsToClear.forEach(field => {
-      if (dataToUpdate[field] === null) {
-        dataToUpdate[field] = admin.firestore.FieldValue.delete(); // Or set to null if preferred and handled by client
+    // Run the update in a transaction
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(requirementRef);
+      if (!doc.exists) {
+        // Use a custom error message to be caught later
+        throw new Error('NOT_FOUND');
       }
+
+      const docData = doc.data();
+      const actionRequesterId = req.user.uid;
+
+      // Logic for marking as 'purchased'
+      if (dataToUpdate.status === 'purchased') {
+        // ✨ **關鍵檢查**：只允許在 'pending' 狀態下購買
+        if (docData.status !== 'pending') {
+          throw new Error('ALREADY_PURCHASED'); // Custom error for race condition
+        }
+      } 
+      // Logic for reverting to 'pending'
+      else if (dataToUpdate.status === 'pending') {
+        // Permission check: only the original purchaser can revert
+        if (docData.purchaserId !== actionRequesterId) {
+          throw new Error('PERMISSION_DENIED');
+        }
+      }
+
+      // Prepare the update payload
+      const updatePayload = { ...dataToUpdate };
+
+      // Handle clearing fields when reverting
+      const fieldsToClear = ['purchaseAmount', 'purchaseDate', 'purchaserName', 'purchaserId'];
+      for (const field of fieldsToClear) {
+        if (updatePayload[field] === null) {
+          updatePayload[field] = admin.firestore.FieldValue.delete();
+        }
+      }
+      
+      updatePayload.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+      transaction.update(requirementRef, updatePayload);
     });
 
+    // If transaction is successful, fetch the updated document and send it back
+    const updatedDocSnap = await requirementRef.get();
+    const responseData = { id: updatedDocSnap.id, ...updatedDocSnap.data() };
+    // Convert Timestamps for client-side consumption
+    responseData.createdAt = responseData.createdAt?.toDate().toISOString();
+    responseData.updatedAt = responseData.updatedAt?.toDate().toISOString();
+    
+    res.status(200).json(responseData);
 
-    await requirementRef.update(dataToUpdate);
-    const updatedDoc = await requirementRef.get();
-    const updatedData = { id: updatedDoc.id, ...updatedDoc.data(),
-        createdAt: updatedDoc.data().createdAt?.toDate().toISOString(), // keep original createdAt
-        updatedAt: updatedDoc.data().updatedAt?.toDate().toISOString()
-    };
-    res.status(200).json(updatedData);
   } catch (error) {
-    functions.logger.error('Error updating requirement:', error);
-    res.status(500).json({ message: 'Error updating requirement', error: error.message });
+    functions.logger.error('Error updating requirement:', error.message);
+    if (error.message === 'NOT_FOUND') {
+      return res.status(404).json({ message: '該採購需求不存在。' });
+    }
+    if (error.message === 'ALREADY_PURCHASED') {
+      return res.status(409).json({ message: '此需求已被他人標記為已購買，頁面將會自動更新。' });
+    }
+    if (error.message === 'PERMISSION_DENIED') {
+      return res.status(403).json({ message: '權限不足，只有原始購買者才能撤銷此操作。' });
+    }
+    res.status(500).json({ message: '更新採購需求時發生錯誤', error: error.message });
   }
 });
 

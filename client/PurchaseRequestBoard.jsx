@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign, Tag, Download, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import { collection, query, onSnapshot } from "firebase/firestore"; // ✨ 新增
+import { firestore } from './firebaseConfig'; // ✨ 新增
 
 // Simple Spinner Icon Component
 const SpinnerIcon = ({ className = "" }) => <Loader2 size={16} className={`animate-spin ${className}`} />;
@@ -88,8 +90,31 @@ const PurchaseRequestBoard = () => {
   }, []);
 
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    // 初始載入時先顯示 Loading
+    setIsLoadingRequests(true);
+
+    // 建立一個查詢來監聽 'requirements' 集合
+    const q = query(collection(firestore, "requirements"));
+
+    // 設定 onSnapshot 監聽器
+    const unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+            // 每當集合有任何變化 (新增、修改、刪除)，這個回呼函式就會被觸發
+            console.log("Firestore listener: Detected change in requirements, re-fetching data...");
+            // 重新執行我們原有的 API 請求函式來獲取最新且經過後端處理的資料
+            fetchRequests();
+        },
+        (error) => {
+            // 處理監聽時發生的錯誤
+            console.error("Real-time listener failed: ", error);
+            setFetchError("無法建立即時連線，資料可能不會自動更新。");
+            setIsLoadingRequests(false);
+        }
+    );
+
+    // Cleanup: 當元件被卸載時，取消監聽以避免記憶體洩漏
+    return () => unsubscribe();
+}, [fetchRequests]); // 依賴 fetchRequests (它被 useCallback 包裹，是安全的)
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.description.trim()) {
@@ -191,7 +216,15 @@ const PurchaseRequestBoard = () => {
       await fetchRequests();
     } catch (error) {
       console.error("Error confirming purchase:", error);
-      setUpdateError(error.response?.data?.message || '無法確認購買，請再試一次。');
+      // ✨ **新增的錯誤處理邏輯** ✨
+      if (error.response && error.response.status === 409) {
+        alert('這個已經買好囉。畫面將會自動為您更新。');
+        // 關閉彈窗並刷新資料
+        setShowPurchaseModal(false); 
+        await fetchRequests();
+      } else {
+          setUpdateError(error.response?.data?.message || '無法確認購買，請再試一次。');
+      }    
     } finally {
       setIsUpdatingRequest(false);
     }
