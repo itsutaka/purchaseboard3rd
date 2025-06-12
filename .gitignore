@@ -5,3 +5,4 @@ firebase-debug.log
 firestore-debug.log
 functions/firebase-debug.log
 functions/firestore-debug.log
+*.log
