@@ -99,12 +99,11 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
 
     if (isReverting) {
     // 開始進行比對
-      const isOwner = docData.userId === actionRequesterId; // 比對操作者是不是文件的擁有者
       const isPurchaser = docData.purchaserId === actionRequesterId; // 比對操作者是不是文件的購買者
 
-      if (!isOwner && !isPurchaser) {
+      if (!isPurchaser) {
     // 如果兩個都不是，就拒絕操作
-        return res.status(403).json({ message: '權限不足，只有建立者或購買者才能撤銷此操作。' });
+        return res.status(403).json({ message: '權限不足，只有購買者才能撤銷此操作。' });
      }
     }
 

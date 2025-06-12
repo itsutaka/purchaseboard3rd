@@ -131,20 +131,26 @@ const PurchaseRequestBoard = () => {
       setPurchaserNameInput(currentUser?.displayName || ''); // Pre-fill purchaser name
       setShowPurchaseModal(true);
     } else { // Reverting to 'pending'
-      if (!currentUser) {
-        alert("請登入以更新狀態。");
-        setUpdateError("請登入以更新狀態。");
+      const confirmed = window.confirm("您確定要撤銷這次的購買紀錄嗎？相關的購買金額與日期將會被清除。");
+
+      if (confirmed) { //將原本的所有邏輯都移到 confirmed 判斷式內部
+        if (!currentUser) {
+          alert("請登入以更新狀態。");
+          setUpdateError("請登入以更新狀態。");
+          setSelectedRequestId(null); // 清理狀態
+          setNewStatusForUpdate(null);  // 清理狀態
         return;
-      }
-      setIsUpdatingRequest(true);
-      setUpdateError(null);
-      try {
+       }
+       setIsUpdatingRequest(true);
+       setUpdateError(null);
+       try {
         const token = await currentUser.getIdToken();
         const payload = {
           status: 'pending',
           purchaseAmount: null,
           purchaseDate: null,
-          purchaserName: null
+          purchaserName: null,
+          purchaserId: null // 同時清除購買者ID
         };
         await axios.put(`/api/requirements/${id}`, payload, { headers: { 'Authorization': `Bearer ${token}` } });
         await fetchRequests();
@@ -154,10 +160,14 @@ const PurchaseRequestBoard = () => {
       } finally {
         setIsUpdatingRequest(false);
         setSelectedRequestId(null);
+        setNewStatusForUpdate(null);
       }
+    } else {
+      setSelectedRequestId(null);
+      setNewStatusForUpdate(null);
     }
-  };
-
+  }
+};
   const confirmPurchase = async () => {
     if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) { alert('請輸入有效的購買金額'); return; }
     if (!purchaserNameInput.trim()) { alert('請輸入購買人姓名'); return; }
