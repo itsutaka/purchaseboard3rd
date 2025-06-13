@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
-import PurchaseRequestBoard from './PurchaseRequestBoard.jsx';
+import React, { useState, Suspense } from 'react';
 import LoginModal from './LoginModal.jsx';         // 引入彈窗元件
 import UserProfile from './UserProfile.jsx';       // 引入用戶狀態元件
 import { useAuth } from './AuthContext.jsx';
 import { LogIn } from 'lucide-react';
 import './App.css'; 
+
+// ✨ 2. 使用 React.lazy 動態引入 PurchaseRequestBoard
+const PurchaseRequestBoard = React.lazy(() => import('./PurchaseRequestBoard.jsx'));
+
+// ✨ (可選但建議) 建立一個簡單的載入中提示元件
+const LoadingFallback = () => (
+  <div className="text-center py-20">
+    <p className="text-xl text-gray-600">正在載入採購看板...</p>
+  </div>
+);
 
 function App() {
   const { currentUser } = useAuth();
@@ -30,8 +39,10 @@ function App() {
         {/* 顯示已登入的用戶資訊 */}
         <UserProfile />
         
-        {/* 主要內容 */}
-        <PurchaseRequestBoard />
+        {/* ✨ 3. 使用 Suspense 包裹動態載入的元件 */}
+        <Suspense fallback={<LoadingFallback />}>
+          <PurchaseRequestBoard />
+        </Suspense>
         
         {/* 登入彈出視窗 (它會自己根據 isOpen 決定是否顯示) */}
         <LoginModal 
