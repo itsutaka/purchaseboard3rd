@@ -9,3 +9,5 @@ functions/firestore-debug.log
 .cursor/
 .specstory/
 .firebase/
+dist/
+dist/client/

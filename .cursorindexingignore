@@ -1,3 +1,14 @@
 
 # Don't index SpecStory auto-save files, but allow explicit context inclusion via @ references
 .specstory/**
+node_modules/
+.env.local
+functions/node_modules/
+firebase-debug.log
+firestore-debug.log
+functions/firebase-debug.log
+functions/firestore-debug.log
+*.log
+.cursor/
+.specstory/
+.firebase/
