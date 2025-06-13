@@ -8,3 +8,4 @@ functions/firestore-debug.log
 *.log
 .cursor/
 .specstory/
+.firebase/
