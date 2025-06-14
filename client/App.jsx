@@ -22,19 +22,18 @@ function App() {
   return (
     <div className="bg-gray-100 min-h-screen p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-800">Purchase Board App (Dev Mode)</h1>
-          {/* 根據登入狀態顯示不同按鈕 */}
-          {!currentUser && (
-            <button
-              onClick={() => setIsLoginModalOpen(true)}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <LogIn size={18} />
-              登入
-            </button>
-          )}
-        </div>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center">BQ GRACE CHURCH</h1>
+        {!currentUser && (
+          <button
+            onClick={() => setIsLoginModalOpen(true)}
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start gap-2 transition-colors w-full sm:w-auto"
+          >
+            <LogIn size={18} />
+            登入
+          </button>
+        )}
+      </div>
 
         {/* 顯示已登入的用戶資訊 */}
         <UserProfile />
