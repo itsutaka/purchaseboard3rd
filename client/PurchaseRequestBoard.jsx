@@ -328,11 +328,11 @@ const PurchaseRequestBoard = () => {
     if (filteredPurchaseRecords.length === 0) { alert("沒有可匯出的購買記錄。"); return; }
     // alert("正在準備匯出 CSV 檔案，請留意瀏覽器的下載提示。");
     const escapeCSVField = (field) => `"${String(field === null || field === undefined ? '' : field).replace(/"/g, '""')}"`;
-    const headers = ["ID", "項目名稱", "提出者", "購買金額", "需求日期", "購買日期", "購買人", "會計類別"];
+    const headers = ["項目名稱", "提出者", "購買金額", "需求日期", "購買日期", "購買人", "會計類別"];
     let csvContent = "\uFEFF" + headers.map(escapeCSVField).join(',') + '\r\n'; // Add BOM for UTF-8 Excel compatibility
     filteredPurchaseRecords.forEach(record => {
       const row = [
-        record.id, record.title, record.requester, record.purchaseAmount,
+        record.title, record.requester, record.purchaseAmount,
         record.requestDate ? new Date(record.requestDate).toLocaleDateString() : '',
         record.purchaseDate ? new Date(record.purchaseDate).toLocaleDateString() : '',
         record.purchaserName || "", record.accountingCategory || ""
