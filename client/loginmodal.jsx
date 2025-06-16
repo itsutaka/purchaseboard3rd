@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { LogIn, X } from 'lucide-react';
+import { LogIn, X, UserPlus } from 'lucide-react';
 
 // Google Icon SVG Component
 const GoogleIcon = () => (
@@ -14,40 +14,91 @@ const GoogleIcon = () => (
 );
 
 const LoginModal = ({ isOpen, onClose }) => {
-  const { login, signInWithGoogle } = useAuth();
+  const { login, signUp, signInWithGoogle } = useAuth();
+  const [mode, setMode] = useState('login'); // 'login' or 'register'
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 當 modal 開關或模式切換時，清空表單和錯誤訊息
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeout(() => {
+        setMode('login');
+        setError('');
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }, 200); // 等待淡出動畫結束
+    }
+  }, [isOpen]);
+
+  const handleModeSwitch = () => {
+    setError('');
+    setMode(prevMode => prevMode === 'login' ? 'register' : 'login');
+  }
 
   // 👇 ***** 補上這個遺漏的函式 *****
   const handleGoogleLogin = async () => {
     setError('');
-    setIsLoggingIn(true);
+    setIsSubmitting(true);
     try {
       await signInWithGoogle();
-      onClose(); // 登入成功後關閉視窗
+      onClose();
     } catch (err) {
       console.error("Google Login failed:", err);
       setError("Google 登入失敗，請稍後再試。");
     } finally {
-      setIsLoggingIn(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoggingIn(true);
-    try {
-      await login(email, password);
-      onClose();
-    } catch (err) {
-      console.error("Login failed:", err);
-      setError("登入失敗，請檢查帳號密碼或模擬器中是否有此用戶。");
-    } finally {
-      setIsLoggingIn(false);
+    setIsSubmitting(true);
+
+    if (mode === 'register') {
+      // 註冊邏輯
+      if (!name.trim()) {
+        setError('請輸入您的姓名。');
+        setIsSubmitting(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('兩次輸入的密碼不一致。');
+        setIsSubmitting(false);
+        return;
+      }
+      try {
+        await signUp(name, email, password);
+        onClose();
+      } catch (err) {
+        console.error("Sign up failed:", err);
+        if (err.code === 'auth/email-already-in-use') {
+          setError('此電子郵件已經被註冊。');
+        } else if (err.code === 'auth/weak-password') {
+          setError('密碼強度不足，請設定至少6位數的密碼。');
+        } else {
+          setError("註冊失敗，請稍後再試。");
+        }
+      }
+    } else {
+      // 登入邏輯
+      try {
+        await login(email, password);
+        onClose();
+      } catch (err) {
+        console.error("Login failed:", err);
+        setError("登入失敗，請檢查帳號密碼或網路連線。");
+      }
     }
+
+    setIsSubmitting(false);
   };
 
   if (!isOpen) {
@@ -58,7 +109,8 @@ const LoginModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="bg-blue-500 text-white p-4 rounded-t-lg flex justify-between items-center">
-          <h2 className="text-lg font-semibold">登入</h2>
+          {/* 👇 3. 標題根據模式改變 */}
+          <h2 className="text-lg font-semibold">{mode === 'login' ? '登入' : '註冊新帳號'}</h2>
           <button onClick={onClose} className="text-white hover:bg-blue-600 p-1 rounded-full transition-colors">
             <X size={20} />
           </button>
@@ -69,7 +121,7 @@ const LoginModal = ({ isOpen, onClose }) => {
           
           <button 
             onClick={handleGoogleLogin} // 現在這個函式存在了
-            disabled={isLoggingIn}
+            disabled={isSubmitting}
             className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors disabled:opacity-50"
           >
             <GoogleIcon />
@@ -82,24 +134,48 @@ const LoginModal = ({ isOpen, onClose }) => {
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          {/* 👇 4. 將表單提交事件綁定到 handleSubmit */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 👇 5. 根據模式條件性渲染註冊欄位 */}
+            {mode === 'register' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">姓名*</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="您的姓名" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+            )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="test@example.com" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="123456" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              <label className="block text-sm font-medium text-gray-700 mb-1">密碼*</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="至少6位數" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
             </div>
+             {mode === 'register' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">確認密碼*</label>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="再次輸入密碼" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors">
                 取消
               </button>
-              <button type="submit" disabled={isLoggingIn} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
-                {isLoggingIn ? '登入中...' : <><LogIn size={16} /> 登入</>}
+              {/* 👇 6. 按鈕也根據模式改變 */}
+              <button type="submit" disabled={isSubmitting} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
+                {isSubmitting ? (mode === 'login' ? '登入中...' : '註冊中...') : (
+                  mode === 'login' ? <><LogIn size={16} /> 登入</> : <><UserPlus size={16} /> 註冊</>
+                )}
               </button>
             </div>
           </form>
+
+          {/* 👇 7. 新增模式切換的連結 */}
+          <div className="text-center mt-4">
+            <button onClick={handleModeSwitch} className="text-sm text-blue-600 hover:underline focus:outline-none">
+              {mode === 'login' ? '還沒有帳號？點此註冊' : '已經有帳號？點此登入'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

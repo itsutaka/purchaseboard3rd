@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup /*, createUserWithEmailAndPassword */ } from 'firebase/auth';
+import { onAuthStateChanged, 
+         signOut as firebaseSignOut, 
+         signInWithEmailAndPassword, 
+         GoogleAuthProvider, 
+         signInWithPopup,
+         createUserWithEmailAndPassword, // 用於註冊
+         updateProfile // 用於註冊時更新姓名 & 用戶自行編輯姓名 
+       }from 'firebase/auth';
 import { auth } from './firebaseConfig'; // Ensure this path is correct
 
 const AuthContext = createContext();
@@ -25,6 +32,23 @@ export const AuthProvider = ({ children }) => {
     return firebaseSignOut(auth);
   };
 
+  // --- 註冊功能新增的函式 ---
+  const signUp = async (name, email, password) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, { displayName: name });
+    }
+    return userCredential;
+  };
+
+  // --- 編輯功能新增的函式 ---
+  const updateUserProfile = async (profileData) => {
+    if (!auth.currentUser) throw new Error("No user is currently signed in.");
+    await updateProfile(auth.currentUser, profileData);
+    const updatedUser = { ...auth.currentUser, ...profileData };
+    setCurrentUser(updatedUser);
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, user => {
       setCurrentUser(user);
@@ -37,7 +61,9 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     login,
     signInWithGoogle, // <--- 3. 將新函式匯出
-    logout
+    logout,
+    signUp, // 註冊
+    updateUserProfile // 編輯
     // Add other auth functions like signup, passwordReset, etc.
   };
 
