@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { collection, query, onSnapshot } from "firebase/firestore"; // ✨ 新增
 import { firestore } from './firebaseConfig'; // ✨ 新增
+import CategorySelector from './CategorySelector'; // <-- 會計科目導入
+import Linkify from 'react-linkify'; // <-- 超連結偵測
 
 // Simple Spinner Icon Component
 const SpinnerIcon = ({ className = "" }) => <Loader2 size={16} className={`animate-spin ${className}`} />;
@@ -14,6 +16,18 @@ const PurchaseRequestBoard = () => {
 
   const [requests, setRequests] = useState([]);
   const [purchaseRecords, setPurchaseRecords] = useState([]);
+
+  const componentDecorator = (href, text, key) => (
+    <a 
+      href={href} 
+      key={key} 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      className="text-blue-600 hover:underline hover:text-blue-800"
+    >
+      {text}
+    </a>
+  );
 
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -29,6 +43,9 @@ const PurchaseRequestBoard = () => {
   const [showModal, setShowModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showRecordsModal, setShowRecordsModal] = useState(false);
+  const [expandedCards, setExpandedCards] = useState({}); // <-- 展開功能
+
+
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [purchaseAmount, setPurchaseAmount] = useState('');
   const [purchaserNameInput, setPurchaserNameInput] = useState('');
@@ -307,6 +324,14 @@ const PurchaseRequestBoard = () => {
     setCurrentRequestForComment(null);
     setUpdateError(null);
   }, []);
+  
+  // v-- 展開狀態切換函式 --v
+  const toggleCardExpansion = (id) => {
+     setExpandedCards(prev => ({
+      ...prev, // 保留其他卡片的狀態
+      [id]: !prev[id] // 將指定 id 的卡片狀態反轉
+    }));
+  };
 
   useEffect(() => {
     const handleEscapeKey = (event) => {
@@ -371,8 +396,7 @@ const PurchaseRequestBoard = () => {
   const generalErrorForDisplay = (updateError && !showPurchaseModal && !isCommentModalOpen) || (fetchError && requests.length > 0 && !isLoadingRequests) ? (updateError || fetchError) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <>
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-gray-900 text-center">Purchase Board</h1>
@@ -467,39 +491,114 @@ const PurchaseRequestBoard = () => {
 
         {requests.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {sortedRequests.map((request) => (
-              <div key={request.id} className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-opacity ${(isUpdatingRequest || isDeletingRequest) && selectedRequestId === request.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <div className="p-4 pb-0"> <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${statusLabels[request.status]?.color || 'bg-gray-100 text-gray-800'}`}> {statusLabels[request.status]?.text || request.status} </span> </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{request.title || request.text}</h3>
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-3 h-12">{request.description}</p> {/* Fixed height for description */}
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                    <div className="flex items-center gap-1"> <Calendar size={16} /> <span>{new Date(request.createdAt).toLocaleDateString()}</span> </div>
-                    {request.comments?.length > 0 && (<div className="flex items-center gap-1"> <MessageCircle size={16} /> <span>{request.comments.length}</span> </div>)}
-                  </div>
-                  {request.requesterName && (<div className="flex items-center gap-1 text-sm text-gray-600 mb-2"> <User size={16} /> <span>提出者：{request.requesterName}</span> </div>)}
-                  {request.accountingCategory && (<div className="flex items-center gap-1 text-sm text-gray-600 mb-4"> <Tag size={16} className="text-gray-500" /> <span>會計類別：{request.accountingCategory}</span> </div>)}
-                  {request.status === 'purchased' && request.purchaseAmount && ( <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"> <div className="flex items-center gap-2 text-green-800"> <DollarSign size={16} /> <span className="font-medium">購買金額：NT$ {request.purchaseAmount.toLocaleString()}</span> </div> <div className="text-sm text-green-600 mt-1"> 購買日期：{request.purchaseDate ? new Date(request.purchaseDate).toLocaleDateString() : 'N/A'} </div> {request.purchaserName && (<div className="text-sm text-green-600 mt-1"> 購買人：{request.purchaserName} </div>)} </div> )}
-                  <div className="flex gap-2 mb-3">
-                    <button onClick={() => openCommentModal(request)} className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm" disabled={isDeletingRequest || isUpdatingRequest || isAddingComment}> <MessageCircle size={16} /> 留言 ({request.comments?.length || 0}) </button>
-                    {request.status === 'pending' && (<button onClick={() => updateStatus(request.id, 'purchased')} className="flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded transition-colors text-sm disabled:opacity-50" disabled={(isUpdatingRequest && selectedRequestId === request.id) || isDeletingRequest || isAddingComment}> {(isUpdatingRequest && selectedRequestId === request.id && newStatusForUpdate === 'purchased') ? <SpinnerIcon /> : '✓'} 標記為已購買 </button>)}
-                    {request.status === 'purchased' && (<button onClick={() => updateStatus(request.id, 'pending')} className="flex items-center gap-1 px-3 py-1 text-orange-600 hover:bg-orange-50 rounded transition-colors text-sm disabled:opacity-50" disabled={(isUpdatingRequest && selectedRequestId === request.id) || isDeletingRequest || isAddingComment}> {(isUpdatingRequest && selectedRequestId === request.id && newStatusForUpdate === 'pending') ? <SpinnerIcon /> : <RotateCcw size={16} />}撤銷購買 </button>)}
-                    <button onClick={() => deleteRequest(request.id)} className="flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm ml-auto disabled:opacity-50" disabled={(isDeletingRequest && selectedRequestId === request.id) || isUpdatingRequest || isAddingComment}> {(isDeletingRequest && selectedRequestId === request.id) ? <SpinnerIcon /> : <Trash2 size={16} />}刪除 </button>
-                  </div>
-                  {request.comments?.length > 0 && ( <div className="border-t pt-3 mt-3"> <h4 className="text-sm font-semibold text-gray-700 mb-2">留言列表：</h4> <div className="space-y-2 max-h-32 overflow-y-auto"> {request.comments.map((comment) => ( <div key={comment.id} className="bg-gray-50 rounded p-2 group relative"> <div className="flex justify-between items-start mb-1"> <div> <span className="font-medium text-sm text-gray-900">{comment.authorName || comment.userId}</span> <span className="text-xs text-gray-500 ml-2">{new Date(comment.createdAt).toLocaleString()}</span> </div> {currentUser && comment.userId === currentUser.uid && (<button onClick={() => handleDeleteComment(request.id, comment.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 -mt-1" title="刪除留言" disabled={isDeletingRequest || isUpdatingRequest || isAddingComment}> <Trash2 size={14} /> </button> )} </div> <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.text}</p> </div> ))} </div> </div> )}
-                </div>
-              </div>
-            ))}
+            {sortedRequests.map((request) => {
+    // --- 使用大括號 `{` 開始函式區塊 ---
+
+    // 1. 在這裡定義變數是完全正確的
+    const isExpanded = !!expandedCards[request.id];
+    const isLongText = request.description && request.description.length > 50;
+
+    // 2. 使用 return 來回傳 JSX
+    return (
+      <div key={request.id} className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${(isUpdatingRequest || isDeletingRequest) && selectedRequestId === request.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+      <div className="p-4 pb-0">
+        <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${statusLabels[request.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+          {statusLabels[request.status]?.text || request.status}
+        </span>
+      </div>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{request.title || request.text}</h3>
+        
+        {/* 這裡就是我們修改過的核心部分 */}
+        <p className={`text-gray-600 text-sm mb-2 whitespace-pre-wrap break-words ${!isExpanded ? 'line-clamp-3' : ''}`}>
+          <Linkify componentDecorator={componentDecorator}>
+            {request.description}
+          </Linkify>
+        </p>
+
+        {isLongText && (
+          <button
+            onClick={() => toggleCardExpansion(request.id)}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium mb-3 transition-colors"
+          >
+            {isExpanded ? '收合內容' : '...顯示更多'}
+          </button>
+        )}
+
+        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+          <div className="flex items-center gap-1"> <Calendar size={16} /> <span>{new Date(request.createdAt).toLocaleDateString()}</span> </div>
+          {request.comments?.length > 0 && (<div className="flex items-center gap-1"> <MessageCircle size={16} /> <span>{request.comments.length}</span> </div>)}
+        </div>
+
+        {/* ... 後續其他 JSX 程式碼保持不變 ... */}
+        {request.requesterName && (<div className="flex items-center gap-1 text-sm text-gray-600 mb-2"> <User size={16} /> <span>提出者：{request.requesterName}</span> </div>)}
+        {request.accountingCategory && (<div className="flex items-center gap-1 text-sm text-gray-600 mb-4"> <Tag size={16} className="text-gray-500" /> <span>會計類別：{request.accountingCategory}</span> </div>)}
+        {request.status === 'purchased' && request.purchaseAmount && ( <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"> <div className="flex items-center gap-2 text-green-800"> <DollarSign size={16} /> <span className="font-medium">購買金額：NT$ {request.purchaseAmount.toLocaleString()}</span> </div> <div className="text-sm text-green-600 mt-1"> 購買日期：{request.purchaseDate ? new Date(request.purchaseDate).toLocaleDateString() : 'N/A'} </div> {request.purchaserName && (<div className="text-sm text-green-600 mt-1"> 購買人：{request.purchaserName} </div>)} </div> )}
+        
+        <div className="flex gap-2 mb-3">
+          {/* ... 卡片底部的按鈕群 ... */}
+          <button onClick={() => openCommentModal(request)} className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm" disabled={isDeletingRequest || isUpdatingRequest || isAddingComment}> <MessageCircle size={16} /> 留言 ({request.comments?.length || 0}) </button>
+          {request.status === 'pending' && (<button onClick={() => updateStatus(request.id, 'purchased')} className="flex items-center gap-1 px-3 py-1 text-green-600 hover:bg-green-50 rounded transition-colors text-sm disabled:opacity-50" disabled={(isUpdatingRequest && selectedRequestId === request.id) || isDeletingRequest || isAddingComment}> {(isUpdatingRequest && selectedRequestId === request.id && newStatusForUpdate === 'purchased') ? <SpinnerIcon /> : '✓'} 標記為已購買 </button>)}
+          {request.status === 'purchased' && (<button onClick={() => updateStatus(request.id, 'pending')} className="flex items-center gap-1 px-3 py-1 text-orange-600 hover:bg-orange-50 rounded transition-colors text-sm disabled:opacity-50" disabled={(isUpdatingRequest && selectedRequestId === request.id) || isDeletingRequest || isAddingComment}> {(isUpdatingRequest && selectedRequestId === request.id && newStatusForUpdate === 'pending') ? <SpinnerIcon /> : <RotateCcw size={16} />}撤銷購買 </button>)}
+          <button onClick={() => deleteRequest(request.id)} className="flex items-center gap-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm ml-auto disabled:opacity-50" disabled={(isDeletingRequest && selectedRequestId === request.id) || isUpdatingRequest || isAddingComment}> {(isDeletingRequest && selectedRequestId === request.id) ? <SpinnerIcon /> : <Trash2 size={16} />}刪除 </button>
+        </div>
+        
+        {request.comments?.length > 0 && ( 
+          <div className="border-t pt-3 mt-3"> 
+           <h4 className="text-sm font-semibold text-gray-700 mb-2">留言列表：</h4> 
+           <div className="space-y-2 max-h-32 overflow-y-auto"> {request.comments.map((comment) => ( 
+            <div key={comment.id} className="bg-gray-50 rounded p-2 group relative"> 
+            <div className="flex justify-between items-start mb-1"> 
+              <div> 
+                <span className="font-medium text-sm text-gray-900">{comment.authorName || comment.userId}</span> 
+                <span className="text-xs text-gray-500 ml-2">{new Date(comment.createdAt).toLocaleString()}</span> 
+                </div> 
+                {currentUser && comment.userId === currentUser.uid && (<button onClick={() => handleDeleteComment(request.id, comment.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 -mt-1" title="刪除留言" disabled={isDeletingRequest || isUpdatingRequest || isAddingComment}> <Trash2 size={14} /> </button> )} </div> 
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                  <Linkify componentDecorator={componentDecorator}>
+                    {comment.text}
+                  </Linkify>
+                </p>
+                </div> ))} </div> </div> )}
+      </div>
+    </div>
+             );
+            })}
           </div>
         )}
 
         {/* Modals */}
-        {showModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> <div className="bg-blue-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">新增採購需求</h2> <button onClick={() => {setShowModal(false); setSubmitError(null);}} className="text-white hover:bg-blue-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> </div> <div className="p-6 space-y-4"> {submitError && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded relative" role="alert"> <strong className="font-bold">提交錯誤!</strong> <span className="block sm:inline"> {submitError}</span> </div>} <div> <label htmlFor="formTitle" className="block text-sm font-medium text-gray-700 mb-2"> 需求標題* </label> <input id="formTitle" type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="請輸入標題..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required /> </div> <div> <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2"> 詳細描述* </label> <textarea id="formDescription" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="請描述需求的詳細內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> </div> <div> <label htmlFor="formRequester" className="block text-sm font-medium text-gray-700 mb-2"> 提出者姓名 </label> <input id="formRequester" type="text" value={currentUser?.displayName || formData.requester} onChange={(e) => !currentUser?.displayName && setFormData({...formData, requester: e.target.value})} placeholder="您的姓名" className={`w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> <div> <label htmlFor="formAccounting" className="block text-sm font-medium text-gray-700 mb-2"> 會計類別 (選填) </label> <input id="formAccounting" type="text" value={formData.accountingCategory} onChange={(e) => setFormData({...formData, accountingCategory: e.target.value})} placeholder="請輸入會計科目或類別..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" /> </div> <div className="flex gap-3 pt-4"> <button type="button" onClick={() => {setShowModal(false); setSubmitError(null);}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isSubmittingRequest}> 取消 </button> <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isSubmittingRequest}> {isSubmittingRequest && <SpinnerIcon />} {isSubmittingRequest ? '提交中...' : '提交需求'} </button> </div> </div> </div> </div> )}
+        {showModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> 
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> 
+                        <div className="bg-blue-500 text-white p-4 rounded-t-lg flex justify-between items-center"> 
+                          <h2 className="text-lg font-semibold">新增採購需求</h2> 
+                          <button onClick={() => {setShowModal(false); setSubmitError(null);}} className="text-white hover:bg-blue-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> 
+                        </div> 
+                        <div className="p-6 space-y-4"> {submitError && 
+                          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded relative" role="alert"> 
+                          <strong className="font-bold">提交錯誤!</strong> 
+                          <span className="block sm:inline"> {submitError}</span> 
+                          </div>} 
+                          <div> 
+                            <label htmlFor="formTitle" className="block text-sm font-medium text-gray-700 mb-2"> 需求標題* </label> 
+                            <input id="formTitle" type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="請輸入標題..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required /> 
+                            </div> 
+                            <div> 
+                              <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2"> 詳細描述* </label> 
+                              <textarea id="formDescription" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="請描述需求的詳細內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> 
+                                </div> 
+                                <div> 
+                                  <label htmlFor="formRequester" className="block text-sm font-medium text-gray-700 mb-2"> 提出者姓名 </label> 
+                                  <input id="formRequester" type="text" value={currentUser?.displayName || formData.requester} onChange={(e) => !currentUser?.displayName && setFormData({...formData, requester: e.target.value})} placeholder="您的姓名" className={`w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> 
+                                  <CategorySelector 
+                                     value={formData.accountingCategory}
+                                     onChange={(selectedValue) => setFormData({ ...formData, accountingCategory: selectedValue })}
+                                  />
+                                    <div className="flex gap-3 pt-4"> <button type="button" onClick={() => {setShowModal(false); setSubmitError(null);}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isSubmittingRequest}> 取消 </button> <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isSubmittingRequest}> {isSubmittingRequest && <SpinnerIcon />} {isSubmittingRequest ? '提交中...' : '提交需求'} </button> </div> </div> </div> </div> )}
         {showPurchaseModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">確認購買</h2> <button onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> </div> <div className="p-6"> {updateError && <p className="text-red-500 text-sm mb-3 bg-red-100 p-2 rounded text-center">{updateError}</p>} <p className="text-gray-700 mb-4"> 請輸入購買金額與購買人以完成採購： </p> <div className="mb-4"> <label htmlFor="purchaseAmount" className="block text-sm font-medium text-gray-700 mb-2"> 購買金額 (NT$)* </label> <input id="purchaseAmount" type="number" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="請輸入金額..." min="0" step="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="mb-6"> <label htmlFor="purchaserName" className="block text-sm font-medium text-gray-700 mb-2"> 購買人* </label> <input id="purchaserName" type="text" value={purchaserNameInput} onChange={(e) => setPurchaserNameInput(e.target.value)} placeholder="請輸入購買人姓名..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="flex gap-3"> <button type="button" onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isUpdatingRequest}> 取消 </button> <button type="button" onClick={confirmPurchase} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isUpdatingRequest}> {isUpdatingRequest && <SpinnerIcon />} {isUpdatingRequest ? '處理中...' : '確認購買'} </button> </div> </div> </div> </div> )}
         {showRecordsModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">購買記錄</h2> <div className="flex items-center gap-3"> <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV"> <Download size={18} /> 匯出 CSV </button> <button onClick={() => setShowRecordsModal(false)} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" title="關閉"> <X size={20} /> </button> </div> </div> <div className="p-6 overflow-y-auto flex-grow"> <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200"> <h4 className="text-md font-semibold text-gray-800 mb-3">篩選條件</h4> <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> <div> <label htmlFor="filterPurchaser" className="block text-sm font-medium text-gray-700 mb-1">購買人</label> <input id="filterPurchaser" type="text" placeholder="依購買人篩選..." value={filterPurchaserName} onChange={(e) => setFilterPurchaserName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div> <label htmlFor="filterSDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (起)</label> <input id="filterSDate" type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div> <label htmlFor="filterEDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (迄)</label> <input id="filterEDate" type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> </div> </div> {filteredPurchaseRecords.length === 0 ? ( <div className="text-center py-8"> <Receipt size={48} className="mx-auto text-gray-400 mb-4" /> <p className="text-gray-500">無符合條件的購買記錄</p> </div> ) : ( <div className="space-y-4"> <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4"> <div className="flex items-center gap-2 text-green-800 mb-2"> <DollarSign size={20} /> <span className="font-semibold">總支出金額：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span> </div> <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆購買記錄</p> </div> {filteredPurchaseRecords.map((record) => ( <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"> <div className="flex justify-between items-start mb-3"> <h3 className="text-lg font-semibold text-gray-900">{record.title}</h3> <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium"> 已購買 </span> </div> <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm"> <div> <span className="text-gray-600">提出者：</span> <span className="font-medium">{record.requester}</span> </div> <div> <span className="text-gray-600">購買金額：</span> <span className="font-medium text-green-600">NT$ {(record.purchaseAmount || 0).toLocaleString()}</span> </div> <div> <span className="text-gray-600">需求日期：</span> <span className="font-medium">{record.requestDate ? new Date(record.requestDate).toLocaleDateString() : 'N/A'}</span> </div> <div> <span className="text-gray-600">購買日期：</span> <span className="font-medium">{record.purchaseDate ? new Date(record.purchaseDate).toLocaleDateString() : 'N/A'}</span> </div> {record.purchaserName && (<div className="sm:col-span-2"> <span className="text-gray-600">購買人：</span> <span className="font-medium">{record.purchaserName}</span> </div>)} {record.accountingCategory && (<div className="sm:col-span-2"> <span className="text-gray-600">會計類別：</span> <span className="font-medium">{record.accountingCategory}</span> </div>)} </div> </div> ))} </div> )} </div> </div> </div> )}
         {isCommentModalOpen && currentRequestForComment && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out" onClick={closeCommentModal} > <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4 transform transition-all duration-300 ease-in-out scale-100" onClick={(e) => e.stopPropagation()} > <div className="flex justify-between items-center"> <h2 className="text-xl font-semibold text-gray-800"> 發表留言於：<span className="font-bold truncate max-w-xs inline-block align-bottom">{currentRequestForComment?.title || currentRequestForComment?.text || '需求'}</span> </h2> <button onClick={closeCommentModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors" title="關閉" > <X size={24} /> </button> </div> {updateError && <p className="text-red-500 text-sm mb-2 bg-red-100 p-2 rounded text-center">{updateError}</p>} <div className="space-y-4"> <div> <label htmlFor="commenterNameModal" className="block text-sm font-medium text-gray-700 mb-1">您的姓名*</label> <input id="commenterNameModal" ref={commenterNameInputRef} type="text" value={commenterName} onChange={(e) => setCommenterName(e.target.value)} placeholder="請輸入您的姓名..." className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> <div> <label htmlFor="newCommentModal" className="block text-sm font-medium text-gray-700 mb-1">留言內容*</label> <textarea id="newCommentModal" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="請輸入留言內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> </div> </div> <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-4"> <button type="button" onClick={closeCommentModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium" disabled={isAddingComment}> 取消 </button> <button type="button" onClick={() => { if (currentRequestForComment) { addComment(currentRequestForComment.id); } }} className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" disabled={isAddingComment || !newComment.trim()} > {isAddingComment && <SpinnerIcon />} {isAddingComment ? '傳送中...' : '送出留言'} </button> </div> </div> </div> )}
-      </div>
-    </div>
+      </>
   );
 };
 

@@ -1,0 +1,122 @@
+[
+  {
+    "code": "3",
+    "name": "事務費",
+    "children": [
+      {
+        "code": "3.1",
+        "name": "文具印刷"
+      },
+      {
+        "code": "3.2",
+        "name": "交通費"
+      },
+      {
+        "code": "3.3",
+        "name": "郵資費&匯費"
+      },
+      {
+        "code": "3.4",
+        "name": "電話網路費"
+      },
+      {
+        "code": "3.5",
+        "name": "裝潢費"
+      },
+      {
+        "code": "3.6",
+        "name": "水電費",
+        "children": [
+          { "code": "a", "name": "水" },
+          { "code": "b", "name": "電" },
+          { "code": "c", "name": "瓦斯" }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "4",
+    "name": "事工",
+    "children": [
+      {
+        "code": "4.1",
+        "name": "愛宴餐點費"
+      },
+      {
+        "code": "4.2",
+        "name": "主日",
+        "children": [
+          { "code": "a", "name": "聖餐" },
+          { "code": "b", "name": "花藝" },
+          { "code": "c", "name": "茶水/點心" }
+        ]
+      },
+      {
+        "code": "4.3",
+        "name": "外展英語"
+      },
+      {
+        "code": "4.4",
+        "name": "外展特約費"
+      },
+      {
+        "code": "4.5",
+        "name": "講座-家庭"
+      },
+      {
+        "code": "4.6",
+        "name": "教育事工",
+        "children": [
+          { "code": "a", "name": "成主教材" },
+          { "code": "b", "name": "兒主教材" },
+          { "code": "c", "name": "老師訓練" },
+          { "code": "d", "name": "圖書費" }
+        ]
+      },
+      {
+        "code": "4.7",
+        "name": "外請講員費"
+      },
+      {
+        "code": "4.8",
+        "name": "兒童事工"
+      },
+      {
+        "code": "4.12",
+        "name": "節慶",
+        "children": [
+          { "code": "a", "name": "聖誕節" },
+          { "code": "b", "name": "復活節" },
+          { "code": "c", "name": "母親節" },
+          { "code": "d", "name": "父親節" },
+          { "code": "e", "name": "感恩節" },
+          { "code": "f", "name": "音樂事工" }
+        ]
+      },
+      {
+        "code": "4.13",
+        "name": "慈善支出"
+      },
+      {
+        "code": "4.14",
+        "name": "教會退修會"
+      },
+      {
+        "code": "4.15",
+        "name": "團契事工",
+        "children": [
+          { "code": "a", "name": "弟兄" },
+          { "code": "b", "name": "姊妹" },
+          { "code": "c", "name": "青年" },
+          { "code": "d", "name": "青少年" },
+          { "code": "e", "name": "松柏" },
+          { "code": "f", "name": "葡萄樹" }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "5",
+    "name": "其他"
+  }
+]
