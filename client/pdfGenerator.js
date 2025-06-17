@@ -52,21 +52,33 @@ export const generateVoucherPDF = async (records, currentUser) => {
     doc.text(`${preparerName}`, 20, 35);
     doc.text('代墊費用請款單', 40, 35);
     doc.text(voucherDate, 80, 35);
-    doc.text('付單據＿＿＿＿張', 140, 35);
+    doc.text(`附單據 ${recordsArray.length} 張`, 140, 35);
 
-    const tableRows = recordsArray.map(rec => ([
-      rec.accountingCategory || 'N/A',
-      rec.title,
-      (rec.purchaseAmount || 0).toLocaleString(),
-      '',
-      '',
-      ''
-    ]));
-    
-    if (recordsArray.length === 1) {
-      tableRows[0][3] = '銀行存款';
-      tableRows[0][5] = totalAmount.toLocaleString();
+   // --- MODIFIED: 修改貸方資料的生成邏輯 ---
+   const tableRows = recordsArray.map((rec, index) => {
+    if (index === 0) {
+      // 第一行總是包含貸方資訊和總金額
+      return [
+        rec.accountingCategory || 'N/A',
+        rec.title,
+        (rec.purchaseAmount || 0).toLocaleString(),
+        '銀行存款',
+        '',
+        ''
+      ];
+    } else {
+      // 後續行數的貸方欄位為空
+      return [
+        rec.accountingCategory || 'N/A',
+        rec.title,
+        (rec.purchaseAmount || 0).toLocaleString(),
+        '',
+        '',
+        ''
+      ];
     }
+  });
+
 
     autoTable(doc, {
       startY: 50,
@@ -78,26 +90,45 @@ export const generateVoucherPDF = async (records, currentUser) => {
         ['會計科目', '摘要', '金額', '會計科目', '摘要', '金額']
       ],
       body: tableRows,
+      // --- NEW: 新增 columnStyles 來設定欄位樣式 ---
+      columnStyles: {
+        2: { halign: 'right' }, // 第 3 欄 (借方金額) 靠右對齊
+        5: { halign: 'right' }  // 第 6 欄 (貸方金額) 靠右對齊
+      },
       theme: 'grid',
+      // --- NEW: 使用 foot 屬性來產生合計列 ---
+      foot: [
+        [
+            { content: '合計', colSpan: 2, styles: { halign: 'right' } },
+            { content: `${totalAmount.toLocaleString()}`, styles: { halign: 'right' } },
+            { content: '合計', colSpan: 2, styles: { halign: 'right' } },
+            { content: `${totalAmount.toLocaleString()}`, styles: { halign: 'right' } },
+        ]
+      ],
       // --- FINAL FIX: 明確指定表頭和內容的字體與樣式 ---
       headStyles: {
         font: 'NotoSansTC',      // 為表頭指定字體
         fontStyle: 'normal',   // 強制使用 normal 樣式，避免預設的 bold
         fillColor: [230, 230, 230],
-        textColor: 20
+        textColor: 20,
+        lineWidth: 0.1,       // 設定線條寬度
+        lineColor: [44, 62, 80] // 設定線條顏色 (深灰色，也可設為 [0, 0, 0] 純黑)
       },
       bodyStyles: {
         font: 'NotoSansTC'       // 確保內容區域也使用正確字體
+      },
+      footStyles: {
+        font: 'NotoSansTC',
+        fontStyle: 'normal', // 讓合計列使用 normal 字體
+        fillColor: [230, 230, 230],
+        textColor: 20,
+        lineWidth: 0.1,
+        lineColor: [44, 62, 80]
       },
       didDrawPage: (data) => {
         const totalY = data.cursor.y + 10;
         doc.setFont('NotoSansTC');
         doc.setFontSize(12);
-        
-        doc.text('合計:', 90, totalY);
-        doc.text(`$ ${totalAmount.toLocaleString()}`, 125, totalY, { align: 'right' });
-        doc.text('合計:', 160, totalY);
-        doc.text(`$ ${totalAmount.toLocaleString()}`, 195, totalY, { align: 'right' });
 
         const footerY = doc.internal.pageSize.getHeight() - 30;
         doc.text('財務執事(同工)：___________', 20, footerY);
