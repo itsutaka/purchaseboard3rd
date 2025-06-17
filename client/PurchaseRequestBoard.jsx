@@ -6,6 +6,7 @@ import { collection, query, onSnapshot } from "firebase/firestore"; // ✨ 新�
 import { firestore } from './firebaseConfig'; // ✨ 新增
 import CategorySelector from './CategorySelector'; // <-- 會計科目導入
 import Linkify from 'react-linkify'; // <-- 超連結偵測
+import { generateVoucherPDF } from './pdfGenerator.js'; // <-- 新增這行
 
 // Simple Spinner Icon Component
 const SpinnerIcon = ({ className = "" }) => <Loader2 size={16} className={`animate-spin ${className}`} />;
@@ -16,6 +17,29 @@ const PurchaseRequestBoard = () => {
 
   const [requests, setRequests] = useState([]);
   const [purchaseRecords, setPurchaseRecords] = useState([]);
+  const [selectedRecordIds, setSelectedRecordIds] = useState(new Set()); // <-- 新增此行
+
+  const handleRecordSelection = (recordId) => {
+    setSelectedRecordIds(prev => {
+      const newSet = new Set(prev); // 複製當前的 Set
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId); // 如果已存在，就移除
+      } else {
+        newSet.add(recordId); // 如果不存在，就加入
+      }
+      return newSet;
+    });
+  };
+
+  const handleBatchExport = () => {
+    if (selectedRecordIds.size === 0) {
+      alert("請先勾選至少一筆要匯出的購買紀錄。");
+      return;
+    }
+    const recordsToExport = purchaseRecords.filter(r => selectedRecordIds.has(r.id));
+    // 將選中的紀錄陣列和當前使用者資訊傳遞給 PDF 生成函式
+    generateVoucherPDF(recordsToExport, currentUser); 
+  };
 
   const componentDecorator = (href, text, key) => (
     <a 
@@ -596,7 +620,106 @@ const PurchaseRequestBoard = () => {
                                   />
                                     <div className="flex gap-3 pt-4"> <button type="button" onClick={() => {setShowModal(false); setSubmitError(null);}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isSubmittingRequest}> 取消 </button> <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isSubmittingRequest}> {isSubmittingRequest && <SpinnerIcon />} {isSubmittingRequest ? '提交中...' : '提交需求'} </button> </div> </div> </div> </div> )}
         {showPurchaseModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">確認購買</h2> <button onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> </div> <div className="p-6"> {updateError && <p className="text-red-500 text-sm mb-3 bg-red-100 p-2 rounded text-center">{updateError}</p>} <p className="text-gray-700 mb-4"> 請輸入購買金額與購買人以完成採購： </p> <div className="mb-4"> <label htmlFor="purchaseAmount" className="block text-sm font-medium text-gray-700 mb-2"> 購買金額 (NT$)* </label> <input id="purchaseAmount" type="number" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="請輸入金額..." min="0" step="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="mb-6"> <label htmlFor="purchaserName" className="block text-sm font-medium text-gray-700 mb-2"> 購買人* </label> <input id="purchaserName" type="text" value={purchaserNameInput} onChange={(e) => setPurchaserNameInput(e.target.value)} placeholder="請輸入購買人姓名..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="flex gap-3"> <button type="button" onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isUpdatingRequest}> 取消 </button> <button type="button" onClick={confirmPurchase} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isUpdatingRequest}> {isUpdatingRequest && <SpinnerIcon />} {isUpdatingRequest ? '處理中...' : '確認購買'} </button> </div> </div> </div> </div> )}
-        {showRecordsModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">購買記錄</h2> <div className="flex items-center gap-3"> <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV"> <Download size={18} /> 匯出 CSV </button> <button onClick={() => setShowRecordsModal(false)} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" title="關閉"> <X size={20} /> </button> </div> </div> <div className="p-6 overflow-y-auto flex-grow"> <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200"> <h4 className="text-md font-semibold text-gray-800 mb-3">篩選條件</h4> <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> <div> <label htmlFor="filterPurchaser" className="block text-sm font-medium text-gray-700 mb-1">購買人</label> <input id="filterPurchaser" type="text" placeholder="依購買人篩選..." value={filterPurchaserName} onChange={(e) => setFilterPurchaserName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div> <label htmlFor="filterSDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (起)</label> <input id="filterSDate" type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div> <label htmlFor="filterEDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (迄)</label> <input id="filterEDate" type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> </div> </div> {filteredPurchaseRecords.length === 0 ? ( <div className="text-center py-8"> <Receipt size={48} className="mx-auto text-gray-400 mb-4" /> <p className="text-gray-500">無符合條件的購買記錄</p> </div> ) : ( <div className="space-y-4"> <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4"> <div className="flex items-center gap-2 text-green-800 mb-2"> <DollarSign size={20} /> <span className="font-semibold">總支出金額：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span> </div> <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆購買記錄</p> </div> {filteredPurchaseRecords.map((record) => ( <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"> <div className="flex justify-between items-start mb-3"> <h3 className="text-lg font-semibold text-gray-900">{record.title}</h3> <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium"> 已購買 </span> </div> <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm"> <div> <span className="text-gray-600">提出者：</span> <span className="font-medium">{record.requester}</span> </div> <div> <span className="text-gray-600">購買金額：</span> <span className="font-medium text-green-600">NT$ {(record.purchaseAmount || 0).toLocaleString()}</span> </div> <div> <span className="text-gray-600">需求日期：</span> <span className="font-medium">{record.requestDate ? new Date(record.requestDate).toLocaleDateString() : 'N/A'}</span> </div> <div> <span className="text-gray-600">購買日期：</span> <span className="font-medium">{record.purchaseDate ? new Date(record.purchaseDate).toLocaleDateString() : 'N/A'}</span> </div> {record.purchaserName && (<div className="sm:col-span-2"> <span className="text-gray-600">購買人：</span> <span className="font-medium">{record.purchaserName}</span> </div>)} {record.accountingCategory && (<div className="sm:col-span-2"> <span className="text-gray-600">會計類別：</span> <span className="font-medium">{record.accountingCategory}</span> </div>)} </div> </div> ))} </div> )} </div> </div> </div> )}
+        {showRecordsModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+      {/* --- MODIFIED: Modal Header --- */}
+      <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center">
+        <h2 className="text-lg font-semibold">購買記錄</h2>
+        <div className="flex items-center gap-3">
+          {/* --- NEW: Batch Export Button --- */}
+          <button
+            onClick={handleBatchExport}
+            disabled={selectedRecordIds.size === 0}
+            className="flex items-center gap-2 bg-white text-blue-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="將勾選的項目合併成一張轉帳傳票"
+          >
+            <Download size={18} />
+            匯出選中傳票
+          </button>
+          <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV">
+            <Download size={18} />
+            匯出 CSV
+          </button>
+          <button onClick={() => setShowRecordsModal(false)} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" title="關閉">
+            <X size={20} />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 overflow-y-auto flex-grow">
+        {/* --- Filter Section (Unchanged) --- */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h4 className="text-md font-semibold text-gray-800 mb-3">篩選條件</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="filterPurchaser" className="block text-sm font-medium text-gray-700 mb-1">購買人</label>
+              <input id="filterPurchaser" type="text" placeholder="依購買人篩選..." value={filterPurchaserName} onChange={(e) => setFilterPurchaserName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label htmlFor="filterSDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (起)</label>
+              <input id="filterSDate" type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label htmlFor="filterEDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (迄)</label>
+              <input id="filterEDate" type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+          </div>
+        </div>
+        
+        {filteredPurchaseRecords.length === 0 ? (
+          <div className="text-center py-8">
+            <Receipt size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-500">無符合條件的購買記錄</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-green-800 mb-2">
+                <DollarSign size={20} />
+                <span className="font-semibold">總支出金額：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span>
+              </div>
+              <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆購買記錄</p>
+            </div>
+            
+            {/* --- MODIFIED: Record List with Checkboxes --- */}
+            {filteredPurchaseRecords.map((record) => (
+              <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex items-start gap-4">
+                {/* --- NEW: Checkbox --- */}
+                <div className="flex-shrink-0 pt-1">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={selectedRecordIds.has(record.id)}
+                    onChange={() => handleRecordSelection(record.id)}
+                    aria-labelledby={`record-title-${record.id}`}
+                  />
+                </div>
+                {/* --- NEW: Wrapper for content --- */}
+                <div className="flex-grow">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 id={`record-title-${record.id}`} className="text-lg font-semibold text-gray-900">{record.title}</h3>
+                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                      已購買
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div><span className="text-gray-600">提出者：</span><span className="font-medium">{record.requester}</span></div>
+                    <div><span className="text-gray-600">購買金額：</span><span className="font-medium text-green-600">NT$ {(record.purchaseAmount || 0).toLocaleString()}</span></div>
+                    <div><span className="text-gray-600">需求日期：</span><span className="font-medium">{record.requestDate ? new Date(record.requestDate).toLocaleDateString() : 'N/A'}</span></div>
+                    <div><span className="text-gray-600">購買日期：</span><span className="font-medium">{record.purchaseDate ? new Date(record.purchaseDate).toLocaleDateString() : 'N/A'}</span></div>
+                    {record.purchaserName && (<div className="sm:col-span-2"><span className="text-gray-600">購買人：</span><span className="font-medium">{record.purchaserName}</span></div>)}
+                    {record.accountingCategory && (<div className="sm:col-span-2"><span className="text-gray-600">會計類別：</span><span className="font-medium">{record.accountingCategory}</span></div>)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+        )}
         {isCommentModalOpen && currentRequestForComment && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out" onClick={closeCommentModal} > <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4 transform transition-all duration-300 ease-in-out scale-100" onClick={(e) => e.stopPropagation()} > <div className="flex justify-between items-center"> <h2 className="text-xl font-semibold text-gray-800"> 發表留言於：<span className="font-bold truncate max-w-xs inline-block align-bottom">{currentRequestForComment?.title || currentRequestForComment?.text || '需求'}</span> </h2> <button onClick={closeCommentModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors" title="關閉" > <X size={24} /> </button> </div> {updateError && <p className="text-red-500 text-sm mb-2 bg-red-100 p-2 rounded text-center">{updateError}</p>} <div className="space-y-4"> <div> <label htmlFor="commenterNameModal" className="block text-sm font-medium text-gray-700 mb-1">您的姓名*</label> <input id="commenterNameModal" ref={commenterNameInputRef} type="text" value={commenterName} onChange={(e) => setCommenterName(e.target.value)} placeholder="請輸入您的姓名..." className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> <div> <label htmlFor="newCommentModal" className="block text-sm font-medium text-gray-700 mb-1">留言內容*</label> <textarea id="newCommentModal" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="請輸入留言內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> </div> </div> <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-4"> <button type="button" onClick={closeCommentModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium" disabled={isAddingComment}> 取消 </button> <button type="button" onClick={() => { if (currentRequestForComment) { addComment(currentRequestForComment.id); } }} className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" disabled={isAddingComment || !newComment.trim()} > {isAddingComment && <SpinnerIcon />} {isAddingComment ? '傳送中...' : '送出留言'} </button> </div> </div> </div> )}
       </>
   );
