@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign, Tag, Download, Loader2 } from 'lucide-react';
+import { Plus, MessageCircle, Edit, Trash2, X, Send, Calendar, User, RotateCcw, Receipt, DollarSign, Tag, Download, Loader2, CheckSquare } from 'lucide-react'; // 新增 CheckSquare icon
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { collection, query, onSnapshot } from "firebase/firestore";
@@ -13,10 +13,7 @@ const SpinnerIcon = ({ className = "" }) => <Loader2 size={16} className={`anima
 
 const PurchaseRequestBoard = () => {
   const commenterNameInputRef = useRef(null);
-  // --- 新增開始 ---
-  // 建立一個 ref 來操作全選 checkbox 的 indeterminate 狀態
   const selectAllCheckboxRef = useRef(null);
-  // --- 新增結束 ---
   const { currentUser } = useAuth();
 
   const [requests, setRequests] = useState([]);
@@ -131,7 +128,7 @@ const PurchaseRequestBoard = () => {
     setIsLoadingRequests(true);
     const q = query(collection(firestore, "requirements"));
     const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
+        () => {
             console.log("Firestore listener: Detected change in requirements, re-fetching data...");
             fetchRequests();
         },
@@ -185,15 +182,14 @@ const PurchaseRequestBoard = () => {
       setShowPurchaseModal(true);
     } else { 
       const confirmed = window.confirm("您確定要撤銷這次的購買紀錄嗎？相關的購買金額與日期將會被清除。");
-
       if (confirmed) { 
         if (!currentUser) {
           alert("請登入以更新狀態。");
           setUpdateError("請登入以更新狀態。");
           setSelectedRequestId(null); 
           setNewStatusForUpdate(null);  
-        return;
-       }
+          return;
+        }
        setIsUpdatingRequest(true);
        setUpdateError(null);
        try {
@@ -226,7 +222,6 @@ const PurchaseRequestBoard = () => {
     if (!purchaseAmount || parseFloat(purchaseAmount) <= 0) { alert('請輸入有效的購買金額'); return; }
     if (!purchaserNameInput.trim()) { alert('請輸入購買人姓名'); return; }
     if (!currentUser) { alert("請登入以確認購買。"); setUpdateError("請登入以確認購買。"); return; }
-
     setIsUpdatingRequest(true);
     setUpdateError(null);
     try {
@@ -250,7 +245,7 @@ const PurchaseRequestBoard = () => {
         setShowPurchaseModal(false); 
         await fetchRequests();
       } else {
-          setUpdateError(error.response?.data?.message || '無法確認購買，請再試一次。');
+        setUpdateError(error.response?.data?.message || '無法確認購買，請再試一次。');
       }    
     } finally {
       setIsUpdatingRequest(false);
@@ -286,7 +281,6 @@ const PurchaseRequestBoard = () => {
     const trimmedComment = newComment.trim();
     if (!trimmedComment) { alert('請輸入留言內容！'); return; }
     if (!currentUser) { alert("請登入以新增留言。"); setUpdateError("請登入以新增留言。"); return; }
-
     setIsAddingComment(true);
     setUpdateError(null);
     try {
@@ -335,10 +329,7 @@ const PurchaseRequestBoard = () => {
   }, []);
   
   const toggleCardExpansion = (id) => {
-     setExpandedCards(prev => ({
-      ...prev, 
-      [id]: !prev[id]
-    }));
+     setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   useEffect(() => {
@@ -400,11 +391,9 @@ const PurchaseRequestBoard = () => {
     });
   }, [purchaseRecords, filterPurchaserName, filterStartDate, filterEndDate]);
 
-  // --- 新增開始 (全選功能邏輯) ---
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
     const filteredIds = filteredPurchaseRecords.map(r => r.id);
-
     if (isChecked) {
       setSelectedRecordIds(prev => new Set([...prev, ...filteredIds]));
     } else {
@@ -426,30 +415,50 @@ const PurchaseRequestBoard = () => {
     const allSelected = selectedInFilterCount === filteredPurchaseRecords.length;
     const someSelected = selectedInFilterCount > 0 && !allSelected;
 
-    return {
-      isAllSelected: allSelected,
-      isIndeterminate: someSelected,
-    };
+    return { isAllSelected: allSelected, isIndeterminate: someSelected };
   }, [selectedRecordIds, filteredPurchaseRecords]);
+
+  // --- 新增開始：計算已選中項目的統計資訊 ---
+  const selectedRecordsSummary = useMemo(() => {
+    // 如果沒有選中任何項目，直接返回初始值
+    if (selectedRecordIds.size === 0) {
+      return { count: 0, totalAmount: 0 };
+    }
+    
+    // 從所有購買紀錄中，篩選出 ID 存在於 selectedRecordIds 中的項目
+    const selectedRecords = purchaseRecords.filter(record => selectedRecordIds.has(record.id));
+    
+    // 使用 reduce 計算總金額
+    const totalAmount = selectedRecords.reduce((sum, record) => {
+      return sum + (record.purchaseAmount || 0);
+    }, 0);
+    
+    // 返回包含筆數和總金額的物件
+    return {
+      count: selectedRecords.length, // 使用篩選後陣列的長度更準確
+      totalAmount: totalAmount,
+    };
+  }, [selectedRecordIds, purchaseRecords]); // 當勾選或購買紀錄列表變化時，重新計算
+  // --- 新增結束 ---
 
   useEffect(() => {
     if (selectAllCheckboxRef.current) {
       selectAllCheckboxRef.current.indeterminate = isIndeterminate;
     }
   }, [isIndeterminate]);
-  // --- 新增結束 ---
 
   const generalErrorForDisplay = (updateError && !showPurchaseModal && !isCommentModalOpen) || (fetchError && requests.length > 0 && !isLoadingRequests) ? (updateError || fetchError) : null;
 
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        {/* ... (Header and filter UI remains the same) ... */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-gray-900 text-center">Purchase Board</h1>
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <button onClick={() => setShowRecordsModal(true)} className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Receipt size={20} /> 購買記錄 </button>
-            <button onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' }); setShowModal(true);}} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Plus size={20} /> 新增需求 </button>
-          </div>
+         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button onClick={() => setShowRecordsModal(true)} className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Receipt size={20} /> 購買記錄 </button>
+          <button onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' }); setShowModal(true);}} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Plus size={20} /> 新增需求 </button>
+         </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center md:justify-between">
           <div className="flex items-center gap-2">
@@ -479,58 +488,60 @@ const PurchaseRequestBoard = () => {
           </div>
         </div>
       </div>
-
+      
+      {/* ... (Error, Loading, and Empty states JSX remains the same) ... */}
       {generalErrorForDisplay && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-md" role="alert">
-          <p className="font-bold">發生錯誤</p>
-          <p>{generalErrorForDisplay}</p>
-        </div>
-      )}
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-md" role="alert">
+            <p className="font-bold">發生錯誤</p>
+            <p>{generalErrorForDisplay}</p>
+          </div>
+        )}
 
-      {isLoadingRequests && (
-        <div className="text-center py-10">
-          <SpinnerIcon className="text-blue-500 h-12 w-12 mx-auto" />
-          <p className="text-xl mt-4 text-gray-700">載入需求中...</p>
-        </div>
-      )}
+        {isLoadingRequests && (
+          <div className="text-center py-10">
+            <SpinnerIcon className="text-blue-500 h-12 w-12 mx-auto" />
+            <p className="text-xl mt-4 text-gray-700">載入需求中...</p>
+          </div>
+        )}
 
-      {!isLoadingRequests && fetchError && requests.length === 0 && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-6 my-6 rounded-md shadow text-center">
-          <div className="flex flex-col items-center">
-              <svg className="fill-current h-16 w-16 text-red-500 mb-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 5v6h2V5H9zm0 8v2h2v-2H9z"/></svg>
-              <p className="text-xl font-semibold text-red-700">錯誤：無法載入採購需求</p>
-              <p className="text-md text-red-600 mt-1 mb-4">{fetchError}</p>
+        {!isLoadingRequests && fetchError && requests.length === 0 && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-6 my-6 rounded-md shadow text-center">
+            <div className="flex flex-col items-center">
+                <svg className="fill-current h-16 w-16 text-red-500 mb-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 5v6h2V5H9zm0 8v2h2v-2H9z"/></svg>
+                <p className="text-xl font-semibold text-red-700">錯誤：無法載入採購需求</p>
+                <p className="text-md text-red-600 mt-1 mb-4">{fetchError}</p>
+                <button
+                  onClick={fetchRequests}
+                  className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <RotateCcw size={16} />
+                  重新嘗試
+                </button>
+            </div>
+          </div>
+        )}
+
+        {!isLoadingRequests && !fetchError && requests.length === 0 && (
+          <div className="text-center py-10">
+            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            <h3 className="mt-2 text-xl font-medium text-gray-900">目前沒有任何採購需求</h3>
+            <p className="mt-1 text-base text-gray-500">點擊「新增需求」按鈕來建立您的第一個採購單吧！</p>
+            <div className="mt-6">
               <button
-                onClick={fetchRequests}
-                className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium flex items-center gap-2"
+                type="button"
+                onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' }); setShowModal(true);}}
+                className="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                <RotateCcw size={16} />
-                重新嘗試
+                <Plus size={20} className="-ml-1 mr-2 h-5 w-5" />
+                新增需求
               </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!isLoadingRequests && !fetchError && requests.length === 0 && (
-        <div className="text-center py-10">
-          <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-          </svg>
-          <h3 className="mt-2 text-xl font-medium text-gray-900">目前沒有任何採購需求</h3>
-          <p className="mt-1 text-base text-gray-500">點擊「新增需求」按鈕來建立您的第一個採購單吧！</p>
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' }); setShowModal(true);}}
-              className="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Plus size={20} className="-ml-1 mr-2 h-5 w-5" />
-              新增需求
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* ... (Request cards grid JSX remains the same) ... */}
       {requests.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {sortedRequests.map((request) => {
@@ -594,6 +605,7 @@ const PurchaseRequestBoard = () => {
         </div>
       )}
 
+      {/* --- 修改/新增開始: 更新購買紀錄彈出視窗的 JSX --- */}
       {showRecordsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
@@ -611,7 +623,7 @@ const PurchaseRequestBoard = () => {
                 </button>
                 <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV">
                   <Download size={18} />
-                  匯出 CSV
+                  匯出篩選結果 CSV
                 </button>
                 <button onClick={() => setShowRecordsModal(false)} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" title="關閉">
                   <X size={20} />
@@ -623,6 +635,7 @@ const PurchaseRequestBoard = () => {
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h4 className="text-md font-semibold text-gray-800 mb-3">篩選條件</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* ... (Filter inputs remain the same) ... */}
                   <div>
                     <label htmlFor="filterPurchaser" className="block text-sm font-medium text-gray-700 mb-1">購買人</label>
                     <input id="filterPurchaser" type="text" placeholder="依購買人篩選..." value={filterPurchaserName} onChange={(e) => setFilterPurchaserName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
@@ -645,34 +658,39 @@ const PurchaseRequestBoard = () => {
                 </div>
               ) : (
                 <>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <div className="flex items-center gap-2 text-green-800 mb-2">
+                        <div className="flex items-center gap-2 text-gray-700 mb-2">
                           <DollarSign size={20} />
-                          <span className="font-semibold">總支出金額：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span>
+                          <span className="font-semibold">篩選結果總計：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span>
                         </div>
-                        <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆購買記錄</p>
+                        <p className="text-sm text-gray-600">共 {filteredPurchaseRecords.length} 筆符合條件的紀錄</p>
                       </div>
-                      {/* --- 修改/新增開始: 全選 Checkbox --- */}
                       <div className="flex items-center gap-2">
-                        <label htmlFor="select-all-records" className="text-sm font-medium text-gray-700">
-                          全選
-                        </label>
-                        <input
-                          id="select-all-records"
-                          type="checkbox"
-                          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          ref={selectAllCheckboxRef}
-                          checked={isAllSelected}
-                          onChange={handleSelectAll}
-                        />
+                        <label htmlFor="select-all-records" className="text-sm font-medium text-gray-700">全選</label>
+                        <input id="select-all-records" type="checkbox" className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ref={selectAllCheckboxRef} checked={isAllSelected} onChange={handleSelectAll} />
                       </div>
-                      {/* --- 修改/新增結束 --- */}
                     </div>
+                    {/* --- 這是新增的已選項目統計區塊 --- */}
+                    {selectedRecordsSummary.count > 0 && (
+                      <>
+                        <hr className="my-3 border-gray-300" />
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="flex items-center gap-2 text-blue-700 font-semibold">
+                              <CheckSquare size={20} />
+                              <span>已勾選項目總計：NT$ {selectedRecordsSummary.totalAmount.toLocaleString()}</span>
+                            </div>
+                            <p className="text-sm text-blue-600 mt-1">共勾選 {selectedRecordsSummary.count} 筆紀錄</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   <div className="space-y-4">
+                    {/* ... (Record mapping logic remains the same) ... */}
                     {filteredPurchaseRecords.map((record) => (
                       <div key={record.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex items-start gap-4">
                         <div className="flex-shrink-0 pt-1">
@@ -709,6 +727,9 @@ const PurchaseRequestBoard = () => {
           </div>
         </div>
       )}
+      {/* --- 修改/新增結束 --- */}
+
+      {/* ... (Other modals JSX remains the same) ... */}
       {isCommentModalOpen && currentRequestForComment && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out" onClick={closeCommentModal} > <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4 transform transition-all duration-300 ease-in-out scale-100" onClick={(e) => e.stopPropagation()} > <div className="flex justify-between items-center"> <h2 className="text-xl font-semibold text-gray-800"> 發表留言於：<span className="font-bold truncate max-w-xs inline-block align-bottom">{currentRequestForComment?.title || currentRequestForComment?.text || '需求'}</span> </h2> <button onClick={closeCommentModal} className="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors" title="關閉" > <X size={24} /> </button> </div> {updateError && <p className="text-red-500 text-sm mb-2 bg-red-100 p-2 rounded text-center">{updateError}</p>} <div className="space-y-4"> <div> <label htmlFor="commenterNameModal" className="block text-sm font-medium text-gray-700 mb-1">您的姓名*</label> <input id="commenterNameModal" ref={commenterNameInputRef} type="text" value={commenterName} onChange={(e) => setCommenterName(e.target.value)} placeholder="請輸入您的姓名..." className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> <div> <label htmlFor="newCommentModal" className="block text-sm font-medium text-gray-700 mb-1">留言內容*</label> <textarea id="newCommentModal" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="請輸入留言內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> </div> </div> <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-4"> <button type="button" onClick={closeCommentModal} className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors text-sm font-medium" disabled={isAddingComment}> 取消 </button> <button type="button" onClick={() => { if (currentRequestForComment) { addComment(currentRequestForComment.id); } }} className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" disabled={isAddingComment || !newComment.trim()} > {isAddingComment && <SpinnerIcon />} {isAddingComment ? '傳送中...' : '送出留言'} </button> </div> </div> </div> )}
     </>
   );
