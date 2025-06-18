@@ -604,6 +604,37 @@ const PurchaseRequestBoard = () => {
             )})}
         </div>
       )}
+      
+              {/* Modals */}
+              {showModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> 
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> 
+                        <div className="bg-blue-500 text-white p-4 rounded-t-lg flex justify-between items-center"> 
+                          <h2 className="text-lg font-semibold">新增採購需求</h2> 
+                          <button onClick={() => {setShowModal(false); setSubmitError(null);}} className="text-white hover:bg-blue-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> 
+                        </div> 
+                        <div className="p-6 space-y-4"> {submitError && 
+                          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded relative" role="alert"> 
+                          <strong className="font-bold">提交錯誤!</strong> 
+                          <span className="block sm:inline"> {submitError}</span> 
+                          </div>} 
+                          <div> 
+                            <label htmlFor="formTitle" className="block text-sm font-medium text-gray-700 mb-2"> 需求標題* </label> 
+                            <input id="formTitle" type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="請輸入標題..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required /> 
+                            </div> 
+                            <div> 
+                              <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2"> 詳細描述* </label> 
+                              <textarea id="formDescription" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="請描述需求的詳細內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> 
+                                </div> 
+                                <div> 
+                                  <label htmlFor="formRequester" className="block text-sm font-medium text-gray-700 mb-2"> 提出者姓名 </label> 
+                                  <input id="formRequester" type="text" value={currentUser?.displayName || formData.requester} onChange={(e) => !currentUser?.displayName && setFormData({...formData, requester: e.target.value})} placeholder="您的姓名" className={`w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentUser?.displayName ? 'bg-gray-100' : ''}`} readOnly={!!currentUser?.displayName} /> </div> 
+                                  <CategorySelector 
+                                     value={formData.accountingCategory}
+                                     onChange={(selectedValue) => setFormData({ ...formData, accountingCategory: selectedValue })}
+                                  />
+                                    <div className="flex gap-3 pt-4"> <button type="button" onClick={() => {setShowModal(false); setSubmitError(null);}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isSubmittingRequest}> 取消 </button> <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isSubmittingRequest}> {isSubmittingRequest && <SpinnerIcon />} {isSubmittingRequest ? '提交中...' : '提交需求'} </button> </div> </div> </div> </div> )}
+        {showPurchaseModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">確認購買</h2> <button onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> </div> <div className="p-6"> {updateError && <p className="text-red-500 text-sm mb-3 bg-red-100 p-2 rounded text-center">{updateError}</p>} <p className="text-gray-700 mb-4"> 請輸入購買金額與購買人以完成採購： </p> <div className="mb-4"> <label htmlFor="purchaseAmount" className="block text-sm font-medium text-gray-700 mb-2"> 購買金額 (NT$)* </label> <input id="purchaseAmount" type="number" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="請輸入金額..." min="0" step="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="mb-6"> <label htmlFor="purchaserName" className="block text-sm font-medium text-gray-700 mb-2"> 購買人* </label> <input id="purchaserName" type="text" value={purchaserNameInput} onChange={(e) => setPurchaserNameInput(e.target.value)} placeholder="請輸入購買人姓名..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="flex gap-3"> <button type="button" onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isUpdatingRequest}> 取消 </button> <button type="button" onClick={confirmPurchase} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isUpdatingRequest}> {isUpdatingRequest && <SpinnerIcon />} {isUpdatingRequest ? '處理中...' : '確認購買'} </button> </div> </div> </div> </div> )}
+
 
       {/* --- 修改/新增開始: 更新購買紀錄彈出視窗的 JSX --- */}
       {showRecordsModal && (
