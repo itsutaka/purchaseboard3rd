@@ -502,11 +502,29 @@ const PurchaseRequestBoard = () => {
   )}
 </div>
 {/* --- 修改/新增結束 --- */}
-          <button 
-          onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.
-          displayName || '', accountingCategory: '' }); setShowModal(true);}} 
-          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> 
-          <Plus size={20} /> 新增需求 </button>
+          {/* --- 修改/新增開始 (主操作區按鈕) --- */}
+<div className="relative flex-1 group">
+  <button
+    onClick={() => {
+      setSubmitError(null);
+      setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' });
+      setShowModal(true);
+    }}
+    disabled={!currentUser}
+    className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-600"
+    title={currentUser ? "新增一筆採購需求" : "請先登入以新增需求"}
+  >
+    <Plus size={20} />
+    新增需求
+  </button>
+  {!currentUser && (
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+      請先登入才能使用此功能
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+    </div>
+  )}
+</div>
+{/* --- 修改/新增結束 --- */}
          </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center md:justify-between">
