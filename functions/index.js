@@ -194,7 +194,7 @@ app.delete('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
   }
 });
 // GET /api/requirements (Read All)
-app.get('/api/requirements', async (req, res) => {
+app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
   functions.logger.info('Received request for /api/requirements'); // 新增日誌
   try {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();

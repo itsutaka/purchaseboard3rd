@@ -93,8 +93,29 @@ const PurchaseRequestBoard = () => {
   const fetchRequests = useCallback(async () => {
     setIsLoadingRequests(true);
     setFetchError(null);
+    // --- 修改開始 ---
+
+    // 1. 如果沒有登入，就不要發送請求，直接清空列表
+    if (!currentUser) {
+      setRequests([]);
+      setPurchaseRecords([]);
+      setIsLoadingRequests(false);
+      return;
+    }
+
     try {
-      const response = await axios.get('/api/requirements');
+      // 2. 獲取當前使用者的 Firebase ID Token
+      const token = await currentUser.getIdToken();
+
+      // 3. 在 axios.get 請求中加入 Authorization 標頭
+      const response = await axios.get('/api/requirements', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+    // --- 修改結束 ---
+
       if (Array.isArray(response.data)) {
         setRequests(response.data);
         const purchased = response.data.filter(req => req.status === 'purchased');
@@ -116,13 +137,19 @@ const PurchaseRequestBoard = () => {
       }
     } catch (error) {
       console.error('Error fetching purchase requests:', error);
-      setFetchError('無法載入採購請求。 ' + (error.response?.data?.message || error.message));
+      // 當 token 失效或驗證失敗時，後端會回傳 403 Forbidden
+      if (error.response && error.response.status === 403) {
+         setFetchError('您的登入狀態已過期或無效，請重新整理頁面或再次登入。');
+      } else {
+         setFetchError('無法載入採購請求。 ' + (error.response?.data?.message || error.message));
+      }
       setRequests([]);
       setPurchaseRecords([]);
     } finally {
       setIsLoadingRequests(false);
     }
-  }, []);
+    // 記得將 currentUser 加入依賴陣列，確保在登入/登出狀態改變時，能觸發此函式
+  }, [currentUser]); // <-- 修改此處的依賴
 
   useEffect(() => {
     setIsLoadingRequests(true);
