@@ -456,8 +456,30 @@ const PurchaseRequestBoard = () => {
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-gray-900 text-center">Purchase Board</h1>
          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <button onClick={() => setShowRecordsModal(true)} className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Receipt size={20} /> 購買記錄 </button>
-          <button onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' }); setShowModal(true);}} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> <Plus size={20} /> 新增需求 </button>
+          {/* --- 修改/新增開始 --- */}
+<div className="relative flex-1 group">
+  <button
+    onClick={() => setShowRecordsModal(true)}
+    disabled={!currentUser}
+    className="w-full whitespace-nowrap bg-green-500 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-green-600"
+    title={currentUser ? "查看所有已購買的記錄" : "請先登入以查看購買記錄"}
+  >
+    <Receipt size={20} />
+    購買記錄
+  </button>
+  {!currentUser && (
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+      請先登入才能使用此功能
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-800"></div>
+    </div>
+  )}
+</div>
+{/* --- 修改/新增結束 --- */}
+          <button 
+          onClick={() => { setSubmitError(null); setFormData({ title: '', description: '', requester: currentUser?.
+          displayName || '', accountingCategory: '' }); setShowModal(true);}} 
+          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"> 
+          <Plus size={20} /> 新增需求 </button>
          </div>
         </div>
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center md:justify-between">
