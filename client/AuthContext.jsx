@@ -5,7 +5,8 @@ import { onAuthStateChanged,
          GoogleAuthProvider, 
          signInWithPopup,
          createUserWithEmailAndPassword, // 用於註冊
-         updateProfile // 用於註冊時更新姓名 & 用戶自行編輯姓名 
+         updateProfile, // 用於註冊時更新姓名 & 用戶自行編輯姓名 
+         reload // 引入 reload 函式
        }from 'firebase/auth';
 import { auth } from './firebaseConfig'; // Ensure this path is correct
 
@@ -37,6 +38,8 @@ export const AuthProvider = ({ children }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     if (auth.currentUser) {
       await updateProfile(auth.currentUser, { displayName: name });
+      // ⭐ 新增：強制刷新 ID Token，確保最新的 displayName 包含在下一個請求中
+      await auth.currentUser.getIdToken(true); 
     }
     return userCredential;
   };
@@ -45,8 +48,14 @@ export const AuthProvider = ({ children }) => {
   const updateUserProfile = async (profileData) => {
     if (!auth.currentUser) throw new Error("No user is currently signed in.");
     await updateProfile(auth.currentUser, profileData);
-    const updatedUser = { ...auth.currentUser, ...profileData };
-    setCurrentUser(updatedUser);
+    // ⭐ 關鍵修改：
+    // 在更新 profile 後，呼叫 reload() 來強制 Firebase SDK 更新內部狀態的 currentUser
+    // 然後再強制刷新 ID Token，確保最新的 displayName 包含在下一個請求中
+    await reload(auth.currentUser); // 使用 Firebase SDK 的 reload 函式來更新 auth.currentUser 物件
+    await auth.currentUser.getIdToken(true); 
+
+    // 直接使用更新後的 auth.currentUser 來設定狀態，而非自己創建新物件
+    setCurrentUser(auth.currentUser); 
   };
 
   useEffect(() => {

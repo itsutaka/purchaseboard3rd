@@ -36,6 +36,20 @@ const verifyFirebaseToken = async (req, res, next) => {
   const idToken = authHeader.split('Bearer ')[1];
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+     // --- 👇 新增的審核邏輯 ---
+    // 取得 Firestore 中的使用者文件
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+
+    // 如果文件不存在，或狀態不是 'approved'，則拒絕存取
+    if (!userDoc.exists || userDoc.data().status !== 'approved') {
+      functions.logger.warn(`User ${decodedToken.uid} is not approved or profile does not exist.`);
+      return res.status(403).json({ 
+        message: 'Forbidden. Your account requires administrator approval to access this resource.' 
+      });
+    }
+    // --- 審核邏輯結束 ---
+
     req.user = decodedToken;
     functions.logger.log('ID Token correctly decoded', decodedToken);
     next();
@@ -349,6 +363,29 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
   }
 });
 
+// --- 👇 這是要修改的部分 ---
+
+// 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
+// 使用 functions.auth.user() 的 v1 寫法，而不是 v2 的 onUserCreate
+export const createuserprofile = functions.auth.user().onCreate(async (user) => {
+  const { uid, email, displayName } = user;
+  const userProfile = {
+    email: email,
+    displayName: displayName || 'N/A',
+    status: 'pending', // 預設狀態為待審核
+    roles: ['user'],   // 可選：預設角色
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    // 確保 db 已經被初始化
+    const db = admin.firestore();
+    await db.collection('users').doc(uid).set(userProfile);
+    functions.logger.log(`Successfully created profile for user ${uid}`);
+  } catch (error) {
+    functions.logger.error(`Error creating profile for user ${uid}:`, error);
+  }
+});
 
 // Export the Express app as an HTTP function
 export const api = functions.https.onRequest(app);
