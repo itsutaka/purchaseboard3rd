@@ -2,6 +2,8 @@
 
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
+import { getFunctions, httpsCallable } from 'firebase/functions'; // 新增這行
+import { app } from './firebaseConfig'; // 確保導入了 app 實例
 
 const toMinguoDateString = (date) => {
   const d = new Date(date);
@@ -30,6 +32,29 @@ export const generateVoucherPDF = async (records, currentUser) => {
     return;
   }
 
+  let preparerName = 'N/A'; // 預設值
+
+  // 檢查 currentUser 是否存在，如果存在則嘗試從 Firestore 獲取姓名
+  if (currentUser && currentUser.uid) {
+    try {
+      const functions = getFunctions(app); // 獲取 functions 實例
+      const getUserDisplayName = httpsCallable(functions, 'getUserDisplayNameCallable'); // 引用 Callable Function
+
+      console.log(`Attempting to fetch display name for UID: ${currentUser.uid}`);
+      const result = await getUserDisplayName(); // 無需傳遞 UID，因為後端會從 context 獲取
+      preparerName = result.data.displayName || 'N/A';
+      console.log(`Fetched preparerName from Firestore: ${preparerName}`);
+    } catch (error) {
+      console.error("從 Firestore 獲取用戶姓名失敗:", error);
+      // 如果從 Firestore 獲取失敗，退回到使用 currentUser.displayName 或 recordsArray 中的值
+      preparerName = currentUser?.displayName || recordsArray[0]?.purchaserName || 'N/A';
+      alert(`無法從伺服器獲取最新用戶姓名，將使用備用姓名：${preparerName}。錯誤: ${error.message}`);
+    }
+  } else {
+    // 如果 currentUser 不存在，則使用 recordsArray 中的備用值
+    preparerName = recordsArray[0]?.purchaserName || 'N/A';
+  }
+
   try {
     const doc = new jsPDF();
 
@@ -42,17 +67,16 @@ export const generateVoucherPDF = async (records, currentUser) => {
     doc.setFont('NotoSansTC');
 
     const totalAmount = recordsArray.reduce((sum, rec) => sum + (rec.purchaseAmount || 0), 0);
-    const preparerName = currentUser?.displayName || recordsArray[0]?.purchaserName || 'N/A';
     const voucherDate = toMinguoDateString(new Date());
 
     doc.setFontSize(18);
     doc.text('轉帳傳票 (板橋主恩教會)', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
 
     doc.setFontSize(12);
-    doc.text(`${preparerName}`, 20, 35);
-    doc.text('代墊費用請款單', 40, 35);
-    doc.text(voucherDate, 80, 35);
-    doc.text(`附單據 ${recordsArray.length} 張`, 140, 35);
+    doc.text(`${preparerName}`, 15, 35);
+    doc.text('代墊費用請款單', 30, 35);
+    doc.text(voucherDate, 85, 35);
+    doc.text(`附單據 ${recordsArray.length} 張`, 170, 35);
 
    // --- MODIFIED: 修改貸方資料的生成邏輯 ---
    const tableRows = recordsArray.map((rec, index) => {

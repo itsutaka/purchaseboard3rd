@@ -363,6 +363,51 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
   }
 });
 
+// 新增：可呼叫雲端函式來獲取用戶的 displayName
+export const getUserDisplayNameCallable = functions.https.onCall(async (data, context) => {
+  // 1. 檢查用戶是否已登入
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Only authenticated users can request their display name.'
+    );
+  }
+
+  const uid = context.auth.uid; // 從 context 中獲取當前用戶的 UID，更安全
+
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'User profile not found in Firestore.'
+      );
+    }
+
+    const displayName = userDoc.data().displayName;
+    if (!displayName) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'Display name not found for this user.'
+      );
+    }
+
+    return { displayName: displayName };
+  } catch (error) {
+    functions.logger.error(`Error fetching display name for UID ${uid}:`, error);
+    // 如果是 HttpsError，重新拋出；否則，包裝成 HttpsError
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to retrieve display name.',
+      error.message
+    );
+  }
+});
+
 // --- 👇 這是要修改的部分 ---
 
 // 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
