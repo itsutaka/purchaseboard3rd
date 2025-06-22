@@ -1,6 +1,10 @@
 import express from 'express';
-import * as functions from 'firebase-functions';
 import admin from 'firebase-admin';
+import * as logger from "firebase-functions/logger"; // Gen 2 logging
+import {onRequest} from "firebase-functions/v2/https"; // For HTTP functions
+import {onCall, HttpsError} from "firebase-functions/v2/https"; // For Callable functions
+import { auth as authV1 } from 'firebase-functions/v1'; // Using alias authV1 to be explicit
+
 
 // Initialize firebase-admin
 admin.initializeApp();
@@ -18,7 +22,7 @@ const getUserDisplayName = async (uid) => {
     const userRecord = await admin.auth().getUser(uid);
     return userRecord.displayName || userRecord.email || 'Anonymous';
   } catch (error) {
-    functions.logger.error('Error fetching user data for display name:', uid, error);
+    logger.error('Error fetching user data for display name:', uid, error);
     return 'Unknown User';
   }
 };
@@ -29,7 +33,7 @@ const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    functions.logger.warn('No Firebase ID token was passed as a Bearer token in the Authorization header.');
+    logger.warn('No Firebase ID token was passed as a Bearer token in the Authorization header.');
     return res.status(401).json({ message: 'Unauthorized. No token provided.' });
   }
 
@@ -43,18 +47,18 @@ const verifyFirebaseToken = async (req, res, next) => {
 
     // 如果文件不存在，或狀態不是 'approved'，則拒絕存取
     if (!userDoc.exists || userDoc.data().status !== 'approved') {
-      functions.logger.warn(`User ${decodedToken.uid} is not approved or profile does not exist.`);
-      return res.status(403).json({ 
-        message: 'Forbidden. Your account requires administrator approval to access this resource.' 
+      logger.warn(`User ${decodedToken.uid} is not approved or profile does not exist.`);
+      return res.status(403).json({
+        message: 'Forbidden. Your account requires administrator approval to access this resource.'
       });
     }
     // --- 審核邏輯結束 ---
 
     req.user = decodedToken;
-    functions.logger.log('ID Token correctly decoded', decodedToken);
+    logger.log('ID Token correctly decoded', decodedToken);
     next();
   } catch (error) {
-    functions.logger.error('Error while verifying Firebase ID token:', error);
+    logger.error('Error while verifying Firebase ID token:', error);
     res.status(403).json({ message: 'Forbidden. Invalid token.', error: error.message });
   }
 };
@@ -88,7 +92,7 @@ app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
     const createdData = { id: docRef.id, ...newRequirement, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
     res.status(201).json(createdData);
   } catch (error) {
-    functions.logger.error('Error creating requirement:', error);
+    logger.error('Error creating requirement:', error);
     res.status(500).json({ message: 'Error creating requirement', error: error.message });
   }
 });
@@ -119,7 +123,7 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
         if (docData.status !== 'pending') {
           throw new Error('ALREADY_PURCHASED'); // Custom error for race condition
         }
-      } 
+      }
       // Logic for reverting to 'pending'
       else if (dataToUpdate.status === 'pending') {
         // Permission check: only the original purchaser can revert
@@ -138,7 +142,7 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
           updatePayload[field] = admin.firestore.FieldValue.delete();
         }
       }
-      
+
       updatePayload.updatedAt = admin.firestore.FieldValue.serverTimestamp();
       transaction.update(requirementRef, updatePayload);
     });
@@ -149,11 +153,11 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
     // Convert Timestamps for client-side consumption
     responseData.createdAt = responseData.createdAt?.toDate().toISOString();
     responseData.updatedAt = responseData.updatedAt?.toDate().toISOString();
-    
+
     res.status(200).json(responseData);
 
   } catch (error) {
-    functions.logger.error('Error updating requirement:', error.message);
+    logger.error('Error updating requirement:', error.message);
     if (error.message === 'NOT_FOUND') {
       return res.status(404).json({ message: '該採購需求不存在。' });
     }
@@ -192,30 +196,30 @@ app.delete('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
         batch.delete(commentDoc.ref);
       });
       await batch.commit();
-      functions.logger.log(`已刪除 ${commentsSnapshot.size} 則與採購需求 ${id} 相關的留言`);
+      logger.log(`已刪除 ${commentsSnapshot.size} 則與採購需求 ${id} 相關的留言`);
     }
 
     // 刪除主文件
     await requirementRef.delete();
-    functions.logger.log(`採購需求 ${id} 已被用戶 ${req.user.uid} 成功刪除`);
-    
+    logger.log(`採購需求 ${id} 已被用戶 ${req.user.uid} 成功刪除`);
+
     // 成功刪除後，回傳 204 No Content 是標準做法
     res.status(204).send();
 
   } catch (error) {
-    functions.logger.error('刪除採購需求時發生錯誤:', error);
+    logger.error('刪除採購需求時發生錯誤:', error);
     res.status(500).json({ message: '刪除採購需求時發生錯誤', error: error.message });
   }
 });
 // GET /api/requirements (Read All)
 app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
-  functions.logger.info('Received request for /api/requirements'); // 新增日誌
+  logger.info('Received request for /api/requirements'); // 新增日誌
   try {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();
-    functions.logger.info(`Firestore snapshot fetched. Empty: ${snapshot.empty}. Size: ${snapshot.size}`); // 新增日誌
+    logger.info(`Firestore snapshot fetched. Empty: ${snapshot.empty}. Size: ${snapshot.size}`); // 新增日誌
 
     if (snapshot.empty) {
-      functions.logger.info('No requirements found, returning empty array.'); // 新增日誌
+      logger.info('No requirements found, returning empty array.'); // 新增日誌
       return res.status(200).json([]); // 確保空情況回傳陣列
     }
 
@@ -229,7 +233,7 @@ app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
         } catch (userError) {
           // 即使 getUserDisplayName 內部發生了無法預料的錯誤（例如網路問題、服務暫時不可用）
           // 或者如果 getUserDisplayName 被修改為可能拋出錯誤
-          functions.logger.error(`Failed to get display name for UID: ${data.userId} in requirement ${doc.id}`, userError);
+          logger.error(`Failed to get display name for UID: ${data.userId} in requirement ${doc.id}`, userError);
           requesterName = 'Unknown User (Error)'; // 或其他標識符
         }
       } else if (!requesterName) {
@@ -254,10 +258,10 @@ app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
       };
     });
     const requirements = await Promise.all(requirementsPromises);
-    functions.logger.info(`Successfully processed ${requirements.length} requirements. Returning them.`); // 新增日誌
+    logger.info(`Successfully processed ${requirements.length} requirements. Returning them.`); // 新增日誌
     res.status(200).json(requirements);
   } catch (error) {
-    functions.logger.error('Error in /api/requirements:', error); // 你已經有這個了，很好
+    logger.error('Error in /api/requirements:', error); // 你已經有這個了，很好
     // 確保錯誤時也回傳 JSON
     return res.status(500).json({ message: 'Error fetching requirements from server', error: error.message, stack: error.stack }); // 可以考慮加入 stack trace 以便調試
   }
@@ -292,7 +296,7 @@ app.get('/api/requirements/:id', async (req, res) => {
       updatedAt: data.updatedAt?.toDate().toISOString(),
     });
   } catch (error) {
-    functions.logger.error('Error fetching requirement:', error);
+    logger.error('Error fetching requirement:', error);
     res.status(500).json({ message: 'Error fetching requirement', error: error.message });
   }
 });
@@ -328,7 +332,7 @@ app.post('/api/requirements/:reqId/comments', verifyFirebaseToken, async (req, r
 
     res.status(201).json(createdCommentData);
   } catch (error) {
-    functions.logger.error('Error creating comment:', error);
+    logger.error('Error creating comment:', error);
     res.status(500).json({ message: 'Error creating comment', error: error.message });
   }
 });
@@ -358,28 +362,29 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
     await commentRef.delete();
     res.status(204).send(); // No Content
   } catch (error) {
-    functions.logger.error('Error deleting comment:', error);
+    logger.error('Error deleting comment:', error);
     res.status(500).json({ message: 'Error deleting comment', error: error.message });
   }
 });
 
 // 新增：可呼叫雲端函式來獲取用戶的 displayName
-export const getUserDisplayNameCallable = functions.https.onCall(async (data, context) => {
+// Gen 2 syntax for onCall
+export const getUserDisplayNameCallable = onCall(async (request) => {
   // 1. 檢查用戶是否已登入
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+  if (!request.auth) {
+    throw new HttpsError( // Use imported HttpsError
       'unauthenticated',
       'Only authenticated users can request their display name.'
     );
   }
 
-  const uid = context.auth.uid; // 從 context 中獲取當前用戶的 UID，更安全
+  const uid = request.auth.uid; // 從 request.auth 中獲取當前用戶的 UID
 
   try {
     const userDoc = await db.collection('users').doc(uid).get();
 
     if (!userDoc.exists) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError( // Use imported HttpsError
         'not-found',
         'User profile not found in Firestore.'
       );
@@ -387,7 +392,7 @@ export const getUserDisplayNameCallable = functions.https.onCall(async (data, co
 
     const displayName = userDoc.data().displayName;
     if (!displayName) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError( // Use imported HttpsError
         'not-found',
         'Display name not found for this user.'
       );
@@ -395,12 +400,12 @@ export const getUserDisplayNameCallable = functions.https.onCall(async (data, co
 
     return { displayName: displayName };
   } catch (error) {
-    functions.logger.error(`Error fetching display name for UID ${uid}:`, error);
+    logger.error(`Error fetching display name for UID ${uid}:`, error);
     // 如果是 HttpsError，重新拋出；否則，包裝成 HttpsError
-    if (error instanceof functions.https.HttpsError) {
+    if (error instanceof HttpsError) {
       throw error;
     }
-    throw new functions.https.HttpsError(
+    throw new HttpsError( // Use imported HttpsError
       'internal',
       'Failed to retrieve display name.',
       error.message
@@ -411,9 +416,9 @@ export const getUserDisplayNameCallable = functions.https.onCall(async (data, co
 // --- 👇 這是要修改的部分 ---
 
 // 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
-// 使用 functions.auth.user() 的 v1 寫法，而不是 v2 的 onUserCreate
-export const createuserprofile = functions.auth.user().onCreate(async (user) => {
-  const { uid, email, displayName } = user;
+// Gen 2 syntax for onUserCreate
+export const createuserprofile = authV1.user().onCreate(async (user) => { // Changed from onUserCreate(async (event)...) to authV1.user().onCreate(async (user)...)
+  const { uid, email, displayName } = user; // User data is directly on the 'user' object, not 'event.data'
   const userProfile = {
     email: email,
     displayName: displayName || 'N/A',
@@ -423,14 +428,14 @@ export const createuserprofile = functions.auth.user().onCreate(async (user) => 
   };
 
   try {
-    // 確保 db 已經被初始化
-    const db = admin.firestore();
+    // db should be globally initialized as per your comment
     await db.collection('users').doc(uid).set(userProfile);
-    functions.logger.log(`Successfully created profile for user ${uid}`);
+    logger.log(`Successfully created profile for user ${uid}`);
   } catch (error) {
-    functions.logger.error(`Error creating profile for user ${uid}:`, error);
+    logger.error(`Error creating profile for user ${uid}:`, error);
   }
 });
 
 // Export the Express app as an HTTP function
-export const api = functions.https.onRequest(app);
+// Gen 2 syntax for onRequest
+export const api = onRequest(app); // You can add options here if needed, e.g., onRequest({region: 'us-central1'}, app)
