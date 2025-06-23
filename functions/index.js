@@ -1,28 +1,12 @@
 import express from 'express';
 import * as functions from 'firebase-functions';
 import admin from 'firebase-admin';
-import cors from 'cors';
 
 // Initialize firebase-admin
 admin.initializeApp();
 const db = admin.firestore();
 
 const app = express();
-
-// Configure CORS for Express app
-const corsOptions = {
-  origin: [
-    'https://bqpurchase.web.app',
-    'https://bqpurchase.firebaseapp.com',
-    'http://localhost:3000', // for local development
-    'http://localhost:5173', // for Vite dev server
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-app.use(cors(corsOptions));
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());
@@ -428,7 +412,6 @@ app.get('/api/user/current/display-name', verifyFirebaseToken, async (req, res) 
 });
 
 // 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
-// Updated to use v2 onUserCreated
 export const createuserprofile = functions.auth.user().onCreate(async (user) => {
   const { uid, email, displayName } = user;
   const userProfile = {
