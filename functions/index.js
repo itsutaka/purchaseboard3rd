@@ -3,7 +3,7 @@ import admin from 'firebase-admin';
 import * as logger from "firebase-functions/logger"; // Gen 2 logging
 import {onRequest} from "firebase-functions/v2/https"; // For HTTP functions
 import {onCall, HttpsError} from "firebase-functions/v2/https"; // For Callable functions
-import { auth as authV1 } from 'firebase-functions/v1'; // Using alias authV1 to be explicit
+import * as functions from 'firebase-functions';
 
 
 // Initialize firebase-admin
@@ -417,8 +417,9 @@ export const getUserDisplayNameCallable = onCall(async (request) => {
 
 // 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
 // Gen 2 syntax for onUserCreate
-export const createuserprofile = authV1.user().onCreate(async (user) => { // Changed from onUserCreate(async (event)...) to authV1.user().onCreate(async (user)...)
-  const { uid, email, displayName } = user; // User data is directly on the 'user' object, not 'event.data'
+// 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
+export const createuserprofile = functions.auth.user().onCreate(async (user) => {
+  const { uid, email, displayName } = user;
   const userProfile = {
     email: email,
     displayName: displayName || 'N/A',
@@ -428,11 +429,10 @@ export const createuserprofile = authV1.user().onCreate(async (user) => { // Cha
   };
 
   try {
-    // db should be globally initialized as per your comment
     await db.collection('users').doc(uid).set(userProfile);
-    logger.log(`Successfully created profile for user ${uid}`);
+    functions.logger.log(`Successfully created profile for user ${uid}`);
   } catch (error) {
-    logger.error(`Error creating profile for user ${uid}:`, error);
+    functions.logger.error(`Error creating profile for user ${uid}:`, error);
   }
 });
 
