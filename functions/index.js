@@ -292,33 +292,6 @@ app.get('/api/requirements/:id', async (req, res) => {
   }
 });
 
-// ADD: API endpoint to get user display name via HTTP
-app.get('/api/user/display-name/:uid', verifyFirebaseToken, async (req, res) => {
-  try {
-    const { uid } = req.params;
-    
-    // Check if requesting user is authorized to get this info
-    // For now, let any authenticated user get display names
-    // You might want to add more restrictive logic here
-    
-    const userDoc = await db.collection('users').doc(uid).get();
-    
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: 'User profile not found' });
-    }
-    
-    const displayName = userDoc.data().displayName;
-    if (!displayName) {
-      return res.status(404).json({ message: 'Display name not found for this user' });
-    }
-    
-    res.status(200).json({ displayName });
-  } catch (error) {
-    functions.logger.error('Error fetching user display name:', error);
-    res.status(500).json({ message: 'Error fetching user display name', error: error.message });
-  }
-});
-
 // --- Comments API Endpoints ---
 
 // POST /api/requirements/:reqId/comments (Create Comment) - Protected
