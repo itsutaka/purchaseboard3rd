@@ -1,16 +1,28 @@
 import express from 'express';
+import * as functions from 'firebase-functions';
 import admin from 'firebase-admin';
-import * as logger from "firebase-functions/logger"; // Gen 2 logging
-import {onRequest} from "firebase-functions/v2/https"; // For HTTP functions
-import {onCall, HttpsError} from "firebase-functions/v2/https"; // For Callable functions
-import * as functions from 'firebase-functions'; // v1 functions for auth trigger
-
+import cors from 'cors';
 
 // Initialize firebase-admin
 admin.initializeApp();
 const db = admin.firestore();
 
 const app = express();
+
+// Configure CORS for Express app
+const corsOptions = {
+  origin: [
+    'https://bqpurchase.web.app',
+    'https://bqpurchase.firebaseapp.com',
+    'http://localhost:3000', // for local development
+    'http://localhost:5173', // for Vite dev server
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 // Middleware for parsing JSON request bodies
 app.use(express.json());
@@ -22,18 +34,17 @@ const getUserDisplayName = async (uid) => {
     const userRecord = await admin.auth().getUser(uid);
     return userRecord.displayName || userRecord.email || 'Anonymous';
   } catch (error) {
-    logger.error('Error fetching user data for display name:', uid, error);
+    functions.logger.error('Error fetching user data for display name:', uid, error);
     return 'Unknown User';
   }
 };
-
 
 // Authentication Middleware
 const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    logger.warn('No Firebase ID token was passed as a Bearer token in the Authorization header.');
+    functions.logger.warn('No Firebase ID token was passed as a Bearer token in the Authorization header.');
     return res.status(401).json({ message: 'Unauthorized. No token provided.' });
   }
 
@@ -47,18 +58,18 @@ const verifyFirebaseToken = async (req, res, next) => {
 
     // 如果文件不存在，或狀態不是 'approved'，則拒絕存取
     if (!userDoc.exists || userDoc.data().status !== 'approved') {
-      logger.warn(`User ${decodedToken.uid} is not approved or profile does not exist.`);
-      return res.status(403).json({
-        message: 'Forbidden. Your account requires administrator approval to access this resource.'
+      functions.logger.warn(`User ${decodedToken.uid} is not approved or profile does not exist.`);
+      return res.status(403).json({ 
+        message: 'Forbidden. Your account requires administrator approval to access this resource.' 
       });
     }
     // --- 審核邏輯結束 ---
 
     req.user = decodedToken;
-    logger.log('ID Token correctly decoded', decodedToken);
+    functions.logger.log('ID Token correctly decoded', decodedToken);
     next();
   } catch (error) {
-    logger.error('Error while verifying Firebase ID token:', error);
+    functions.logger.error('Error while verifying Firebase ID token:', error);
     res.status(403).json({ message: 'Forbidden. Invalid token.', error: error.message });
   }
 };
@@ -92,12 +103,10 @@ app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
     const createdData = { id: docRef.id, ...newRequirement, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
     res.status(201).json(createdData);
   } catch (error) {
-    logger.error('Error creating requirement:', error);
+    functions.logger.error('Error creating requirement:', error);
     res.status(500).json({ message: 'Error creating requirement', error: error.message });
   }
 });
-
-// purchaseboard/functions/index.js
 
 // PUT /api/requirements/:id (Update) - Protected with Transaction
 app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
@@ -123,7 +132,7 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
         if (docData.status !== 'pending') {
           throw new Error('ALREADY_PURCHASED'); // Custom error for race condition
         }
-      }
+      } 
       // Logic for reverting to 'pending'
       else if (dataToUpdate.status === 'pending') {
         // Permission check: only the original purchaser can revert
@@ -142,7 +151,7 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
           updatePayload[field] = admin.firestore.FieldValue.delete();
         }
       }
-
+      
       updatePayload.updatedAt = admin.firestore.FieldValue.serverTimestamp();
       transaction.update(requirementRef, updatePayload);
     });
@@ -153,11 +162,11 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
     // Convert Timestamps for client-side consumption
     responseData.createdAt = responseData.createdAt?.toDate().toISOString();
     responseData.updatedAt = responseData.updatedAt?.toDate().toISOString();
-
+    
     res.status(200).json(responseData);
 
   } catch (error) {
-    logger.error('Error updating requirement:', error.message);
+    functions.logger.error('Error updating requirement:', error.message);
     if (error.message === 'NOT_FOUND') {
       return res.status(404).json({ message: '該採購需求不存在。' });
     }
@@ -196,48 +205,47 @@ app.delete('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
         batch.delete(commentDoc.ref);
       });
       await batch.commit();
-      logger.log(`已刪除 ${commentsSnapshot.size} 則與採購需求 ${id} 相關的留言`);
+      functions.logger.log(`已刪除 ${commentsSnapshot.size} 則與採購需求 ${id} 相關的留言`);
     }
 
     // 刪除主文件
     await requirementRef.delete();
-    logger.log(`採購需求 ${id} 已被用戶 ${req.user.uid} 成功刪除`);
-
+    functions.logger.log(`採購需求 ${id} 已被用戶 ${req.user.uid} 成功刪除`);
+    
     // 成功刪除後，回傳 204 No Content 是標準做法
     res.status(204).send();
 
   } catch (error) {
-    logger.error('刪除採購需求時發生錯誤:', error);
+    functions.logger.error('刪除採購需求時發生錯誤:', error);
     res.status(500).json({ message: '刪除採購需求時發生錯誤', error: error.message });
   }
 });
+
 // GET /api/requirements (Read All)
 app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
-  logger.info('Received request for /api/requirements'); // 新增日誌
+  functions.logger.info('Received request for /api/requirements'); 
   try {
     const snapshot = await db.collection('requirements').orderBy('createdAt', 'desc').get();
-    logger.info(`Firestore snapshot fetched. Empty: ${snapshot.empty}. Size: ${snapshot.size}`); // 新增日誌
+    functions.logger.info(`Firestore snapshot fetched. Empty: ${snapshot.empty}. Size: ${snapshot.size}`); 
 
     if (snapshot.empty) {
-      logger.info('No requirements found, returning empty array.'); // 新增日誌
-      return res.status(200).json([]); // 確保空情況回傳陣列
+      functions.logger.info('No requirements found, returning empty array.'); 
+      return res.status(200).json([]); 
     }
 
     const requirementsPromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
-      let requesterName = data.requesterName; // 從既有資料開始
+      let requesterName = data.requesterName; 
 
-      if (!requesterName && data.userId) { // 只有當 requesterName 不存在且有 userId 時才嘗試獲取
+      if (!requesterName && data.userId) { 
         try {
           requesterName = await getUserDisplayName(data.userId);
         } catch (userError) {
-          // 即使 getUserDisplayName 內部發生了無法預料的錯誤（例如網路問題、服務暫時不可用）
-          // 或者如果 getUserDisplayName 被修改為可能拋出錯誤
-          logger.error(`Failed to get display name for UID: ${data.userId} in requirement ${doc.id}`, userError);
-          requesterName = 'Unknown User (Error)'; // 或其他標識符
+          functions.logger.error(`Failed to get display name for UID: ${data.userId} in requirement ${doc.id}`, userError);
+          requesterName = 'Unknown User (Error)'; 
         }
       } else if (!requesterName) {
-        requesterName = 'Anonymous'; // 如果連 userId 都沒有
+        requesterName = 'Anonymous'; 
       }
 
       // Fetch comments for each requirement
@@ -251,19 +259,18 @@ app.get('/api/requirements', verifyFirebaseToken, async (req, res) => {
       return {
         id: doc.id,
         ...data,
-        requesterName, // 使用處理過的 requesterName
-        comments, // Add comments array
+        requesterName, 
+        comments, 
         createdAt: data.createdAt?.toDate().toISOString(),
         updatedAt: data.updatedAt?.toDate().toISOString(),
       };
     });
     const requirements = await Promise.all(requirementsPromises);
-    logger.info(`Successfully processed ${requirements.length} requirements. Returning them.`); // 新增日誌
+    functions.logger.info(`Successfully processed ${requirements.length} requirements. Returning them.`); 
     res.status(200).json(requirements);
   } catch (error) {
-    logger.error('Error in /api/requirements:', error); // 你已經有這個了，很好
-    // 確保錯誤時也回傳 JSON
-    return res.status(500).json({ message: 'Error fetching requirements from server', error: error.message, stack: error.stack }); // 可以考慮加入 stack trace 以便調試
+    functions.logger.error('Error in /api/requirements:', error); 
+    return res.status(500).json({ message: 'Error fetching requirements from server', error: error.message, stack: error.stack }); 
   }
 });
 
@@ -296,8 +303,35 @@ app.get('/api/requirements/:id', async (req, res) => {
       updatedAt: data.updatedAt?.toDate().toISOString(),
     });
   } catch (error) {
-    logger.error('Error fetching requirement:', error);
+    functions.logger.error('Error fetching requirement:', error);
     res.status(500).json({ message: 'Error fetching requirement', error: error.message });
+  }
+});
+
+// ADD: API endpoint to get user display name via HTTP
+app.get('/api/user/display-name/:uid', verifyFirebaseToken, async (req, res) => {
+  try {
+    const { uid } = req.params;
+    
+    // Check if requesting user is authorized to get this info
+    // For now, let any authenticated user get display names
+    // You might want to add more restrictive logic here
+    
+    const userDoc = await db.collection('users').doc(uid).get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'User profile not found' });
+    }
+    
+    const displayName = userDoc.data().displayName;
+    if (!displayName) {
+      return res.status(404).json({ message: 'Display name not found for this user' });
+    }
+    
+    res.status(200).json({ displayName });
+  } catch (error) {
+    functions.logger.error('Error fetching user display name:', error);
+    res.status(500).json({ message: 'Error fetching user display name', error: error.message });
   }
 });
 
@@ -332,7 +366,7 @@ app.post('/api/requirements/:reqId/comments', verifyFirebaseToken, async (req, r
 
     res.status(201).json(createdCommentData);
   } catch (error) {
-    logger.error('Error creating comment:', error);
+    functions.logger.error('Error creating comment:', error);
     res.status(500).json({ message: 'Error creating comment', error: error.message });
   }
 });
@@ -351,72 +385,52 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
 
     // Authorization: Only comment author can delete (or requirement owner - more complex, skip for now)
     if (commentDoc.data().userId !== req.user.uid) {
-      // As an alternative, one might allow the requirement owner to delete comments too.
-      // const requirementDoc = await db.collection('requirements').doc(reqId).get();
-      // if (!requirementDoc.exists || requirementDoc.data().userId !== req.user.uid) {
-      //   return res.status(403).json({ message: 'Forbidden. You can only delete your own comments.' });
-      // }
       return res.status(403).json({ message: 'Forbidden. You can only delete your own comments.' });
     }
 
     await commentRef.delete();
     res.status(204).send(); // No Content
   } catch (error) {
-    logger.error('Error deleting comment:', error);
+    functions.logger.error('Error deleting comment:', error);
     res.status(500).json({ message: 'Error deleting comment', error: error.message });
   }
 });
 
-// 新增：可呼叫雲端函式來獲取用戶的 displayName
-// Gen 2 syntax for onCall
-export const getUserDisplayNameCallable = onCall(async (request) => {
-  // 1. 檢查用戶是否已登入
-  if (!request.auth) {
-    throw new HttpsError( // Use imported HttpsError
-      'unauthenticated',
-      'Only authenticated users can request their display name.'
-    );
-  }
-
-  const uid = request.auth.uid; // 從 request.auth 中獲取當前用戶的 UID
-
+// MODIFIED: Convert callable function to regular HTTP endpoint with CORS
+// This replaces the getUserDisplayNameCallable function
+app.get('/api/user/current/display-name', verifyFirebaseToken, async (req, res) => {
   try {
+    const uid = req.user.uid; // From verified token
+    
     const userDoc = await db.collection('users').doc(uid).get();
 
     if (!userDoc.exists) {
-      throw new HttpsError( // Use imported HttpsError
-        'not-found',
-        'User profile not found in Firestore.'
-      );
+      return res.status(404).json({ 
+        message: 'User profile not found in Firestore.' 
+      });
     }
 
     const displayName = userDoc.data().displayName;
     if (!displayName) {
-      throw new HttpsError( // Use imported HttpsError
-        'not-found',
-        'Display name not found for this user.'
-      );
+      return res.status(404).json({ 
+        message: 'Display name not found for this user.' 
+      });
     }
 
-    return { displayName: displayName };
+    res.status(200).json({ displayName });
   } catch (error) {
-    logger.error(`Error fetching display name for UID ${uid}:`, error);
-    // 如果是 HttpsError，重新拋出；否則，包裝成 HttpsError
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError( // Use imported HttpsError
-      'internal',
-      'Failed to retrieve display name.',
-      error.message
-    );
+    functions.logger.error(`Error fetching display name for UID ${req.user?.uid}:`, error);
+    res.status(500).json({ 
+      message: 'Failed to retrieve display name.',
+      error: error.message 
+    });
   }
 });
-// --- 👇 FIXED: Auth trigger using Firebase Functions v1 ---
+
 // 當有新使用者在 Authentication 建立時，自動在 Firestore 中建立 user profile
-// Using Firebase Functions v1 for auth trigger (correct syntax)
+// Updated to use v2 onUserCreated
 export const createuserprofile = functions.auth.user().onCreate(async (user) => {
-  const { uid, email, displayName } = user; // User data is directly on the 'user' object, not 'event.data'
+  const { uid, email, displayName } = user;
   const userProfile = {
     email: email,
     displayName: displayName || 'N/A',
@@ -426,14 +440,12 @@ export const createuserprofile = functions.auth.user().onCreate(async (user) => 
   };
 
   try {
-    // db should be globally initialized as per your comment
     await db.collection('users').doc(uid).set(userProfile);
-    logger.log(`Successfully created profile for user ${uid}`);
+    functions.logger.log(`Successfully created profile for user ${uid}`);
   } catch (error) {
-    logger.error(`Error creating profile for user ${uid}:`, error);
+    functions.logger.error(`Error creating profile for user ${uid}:`, error);
   }
 });
 
 // Export the Express app as an HTTP function
-// Gen 2 syntax for onRequest
-export const api = onRequest(app); // You can add options here if needed, e.g., onRequest({region: 'us-central1'}, app)
+export const api = functions.https.onRequest(app);

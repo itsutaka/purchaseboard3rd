@@ -37,16 +37,30 @@ export const generateVoucherPDF = async (records, currentUser) => {
   // 檢查 currentUser 是否存在，如果存在則嘗試從 Firestore 獲取姓名
   if (currentUser && currentUser.uid) {
     try {
-      const functions = getFunctions(app); // 獲取 functions 實例
-      const getUserDisplayName = httpsCallable(functions, 'getUserDisplayNameCallable'); // 引用 Callable Function
+      // const functions = getFunctions(app); // REMOVED
+      // const getUserDisplayName = httpsCallable(functions, 'getUserDisplayNameCallable'); // REMOVED
 
-      console.log(`Attempting to fetch display name for UID: ${currentUser.uid}`);
-      const result = await getUserDisplayName(); // 無需傳遞 UID，因為後端會從 context 獲取
-      preparerName = result.data.displayName || 'N/A';
-      console.log(`Fetched preparerName from Firestore: ${preparerName}`);
+      console.log(`Attempting to fetch display name for UID: ${currentUser.uid} using new API endpoint`);
+      
+      const idToken = await currentUser.getIdToken(); // 獲取 Firebase ID Token
+
+      const response = await fetch('/api/user/current/display-name', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      preparerName = result.displayName || 'N/A';
+      console.log(`Fetched preparerName from API: ${preparerName}`);
     } catch (error) {
-      console.error("從 Firestore 獲取用戶姓名失敗:", error);
-      // 如果從 Firestore 獲取失敗，退回到使用 currentUser.displayName 或 recordsArray 中的值
+      console.error("從 API 獲取用戶姓名失敗:", error);
+      // 如果從 API 獲取失敗，退回到使用 currentUser.displayName 或 recordsArray 中的值
       preparerName = currentUser?.displayName || recordsArray[0]?.purchaserName || 'N/A';
       alert(`無法從伺服器獲取最新用戶姓名，將使用備用姓名：${preparerName}。錯誤: ${error.message}`);
     }
