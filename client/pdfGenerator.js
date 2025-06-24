@@ -73,8 +73,7 @@ export const generateVoucherPDF = async (records, currentUser) => {
     doc.text('轉帳傳票 (板橋主恩教會)', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
 
     doc.setFontSize(12);
-    doc.text(`${preparerName}`, 15, 35);
-    doc.text('代墊費用請款單', 30, 35);
+    doc.text(`${preparerName} 代墊費用請款單`, 10, 35);
     doc.text(voucherDate, 85, 35);
     doc.text(`附單據 ${recordsArray.length} 張`, 170, 35);
 
