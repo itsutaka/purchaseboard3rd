@@ -169,8 +169,8 @@ const PurchaseRequestBoard = () => {
 }, [fetchRequests]);
 
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) {
-      alert('請填寫需求標題與詳細描述。');
+    if (!formData.title.trim()) {
+      alert('請填寫需求標題。');
       return;
     }
     if (!currentUser) {
@@ -679,7 +679,7 @@ const PurchaseRequestBoard = () => {
                             <input id="formTitle" type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="請輸入標題..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required /> 
                             </div> 
                             <div> 
-                              <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2"> 詳細描述* </label> 
+                              <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2"> 詳細描述 </label> 
                               <textarea id="formDescription" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="請描述需求的詳細內容..." rows="4" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" /> 
                                 </div> 
                                 <div> 
