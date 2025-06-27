@@ -71,23 +71,44 @@ app.get('/api/health', (req, res) => {
 // --- Requirements API Endpoints ---
 
 // POST /api/requirements (Create) - Protected
+// POST /api/requirements (Create) - Protected
 app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
   try {
-    const { text, description, accountingCategory } = req.body;
+    // 👇 解構出所有可能的欄位
+    const { text, description, accountingCategory, status, purchaseAmount, purchaseDate } = req.body;
+
     if (!text) {
       return res.status(400).json({ message: 'Text (title) is required' });
     }
 
     const newRequirement = {
       text,
-      description: description || "", // Store description
+      description: description || "",
       accountingCategory: accountingCategory || "",
-      status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       userId: req.user.uid,
-      requesterName: req.user.name || req.user.email || 'Anonymous', // Store requester's name at creation
+      requesterName: req.user.name || req.user.email || 'Anonymous',
     };
+
+    // ▼▼▼ 核心修改：根據傳入的 status 決定如何處理 ▼▼▼
+    if (status === 'purchased') {
+      // 如果是直接建立 "已購買" 狀態
+      if (typeof purchaseAmount !== 'number' || purchaseAmount <= 0) {
+        return res.status(400).json({ message: 'A valid purchaseAmount is required for purchased status.' });
+      }
+      newRequirement.status = 'purchased';
+      newRequirement.purchaseAmount = purchaseAmount;
+      // 使用客戶端傳來的 purchaseDate，或設為當前伺服器時間作為備用
+      newRequirement.purchaseDate = purchaseDate || new Date().toISOString();
+      newRequirement.purchaserName = req.user.name || req.user.email; // 使用 token 中的使用者資訊
+      newRequirement.purchaserId = req.user.uid;
+    } else {
+      // 預設行為：建立 "待購買" 狀態
+      newRequirement.status = 'pending';
+    }
+    // ▲▲▲ 修改結束 ▲▲▲
+
     const docRef = await db.collection('requirements').add(newRequirement);
     const createdData = { id: docRef.id, ...newRequirement, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
     res.status(201).json(createdData);
@@ -153,6 +174,9 @@ app.put('/api/requirements/:id', verifyFirebaseToken, async (req, res) => {
     // Convert Timestamps for client-side consumption
     responseData.createdAt = responseData.createdAt?.toDate().toISOString();
     responseData.updatedAt = responseData.updatedAt?.toDate().toISOString();
+    if (responseData.purchaseDate && responseData.purchaseDate.toDate) {
+      responseData.purchaseDate = responseData.purchaseDate.toDate().toISOString();
+    }
 
     res.status(200).json(responseData);
 

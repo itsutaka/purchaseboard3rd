@@ -82,7 +82,9 @@ const PurchaseRequestBoard = () => {
     title: '',
     description: '',
     requester: '',
-    accountingCategory: ''
+    accountingCategory: '',
+    isAlreadyPurchased: false, // <-- 新增：是否已購買的旗標
+    purchaseAmount: '',       // <-- 新增：購買金額
   });
 
   const statusLabels = {
@@ -173,6 +175,11 @@ const PurchaseRequestBoard = () => {
       alert('請填寫需求標題。');
       return;
     }
+    // 如果已勾選購買，則必須填寫有效的金額
+    if (formData.isAlreadyPurchased && (!formData.purchaseAmount || parseFloat(formData.purchaseAmount) <= 0)) {
+      alert('您已勾選「我已購買此項目」，請輸入有效的購買金額。');
+      return;
+    }
     if (!currentUser) {
       setSubmitError("您必須登入才能提交採購需求。");
       alert("您必須登入才能提交採購需求。");
@@ -182,21 +189,65 @@ const PurchaseRequestBoard = () => {
     setSubmitError(null);
     try {
       const token = await currentUser.getIdToken();
+      
+      // 基本的 payload
       const payload = {
         text: formData.title.trim(),
         description: formData.description.trim(),
         accountingCategory: formData.accountingCategory.trim(),
       };
-      await axios.post('/api/requirements', payload, { headers: { 'Authorization': `Bearer ${token}` } });
-      setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' });
-      setShowModal(false);
-      await fetchRequests();
-    } catch (error) {
-      console.error("Error submitting request:", error);
-      setSubmitError(error.response?.data?.message || error.message || '無法提交採購需求，請再試一次。');
-    } finally {
-      setIsSubmittingRequest(false);
+
+      // 如果使用者已購買，則在 payload 中加入購買資訊
+      if (formData.isAlreadyPurchased) {
+        payload.status = 'purchased'; // 直接設定狀態
+        payload.purchaseAmount = parseFloat(formData.purchaseAmount);
+        payload.purchaseDate = new Date().toISOString(); // 使用當前時間作為購買日期
+        payload.purchaserName = currentUser.displayName; // 自動填入當前使用者
+        payload.purchaserId = currentUser.uid;
+      }
+      
+      // 無論是哪種情況，都發送到同一個 endpoint
+      // ▼▼▼ 核心修改開始 ▼▼▼
+
+    // 1. axios.post 現在會接收後端回傳的新資料
+    const response = await axios.post('/api/requirements', payload, { headers: { 'Authorization': `Bearer ${token}` } });
+    const newRequirement = response.data; // 這就是後端回傳的、格式正確的單筆新資料
+
+    // 2. 手動更新前端狀態，將新資料加到列表最前面
+    setRequests(prevRequests => [newRequirement, ...prevRequests]);
+    
+    // 如果是已購買狀態，也要同步更新 purchaseRecords
+    if (newRequirement.status === 'purchased') {
+      const newRecord = {
+        id: newRequirement.id,
+        title: newRequirement.title || newRequirement.text,
+        requester: newRequirement.requesterName,
+        purchaseAmount: newRequirement.purchaseAmount,
+        requestDate: newRequirement.createdAt,
+        purchaseDate: newRequirement.purchaseDate,
+        purchaserName: newRequirement.purchaserName,
+        accountingCategory: newRequirement.accountingCategory
+      };
+      setPurchaseRecords(prevRecords => [newRecord, ...prevRecords]);
     }
+
+    // 3. 不再呼叫 fetchRequests()，直接處理 UI
+    setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '', isAlreadyPurchased: false, purchaseAmount: '' });
+    setShowModal(false);
+
+    // ▲▲▲ 核心修改結束 ▲▲▲
+
+  } catch (error) {
+    console.error("Error submitting request:", error);
+    // 讓錯誤日誌更具體
+    if (error.response) {
+        console.error("Error data:", error.response.data);
+        console.error("Error status:", error.response.status);
+    }
+    setSubmitError(error.response?.data?.message || error.message || '無法提交採購需求，請再試一次。');
+  } finally {
+    setIsSubmittingRequest(false);
+  }
   };
 
   const updateStatus = async (id, newStatus) => {
@@ -507,7 +558,14 @@ const PurchaseRequestBoard = () => {
   <button
     onClick={() => {
       setSubmitError(null);
-      setFormData({ title: '', description: '', requester: currentUser?.displayName || '', accountingCategory: '' });
+      setFormData({ 
+        title: '', 
+        description: '', 
+        requester: currentUser?.displayName || '',
+        accountingCategory: '',
+        isAlreadyPurchased: false,
+        purchaseAmount: ''
+      });
       setShowModal(true);
     }}
     disabled={!currentUser}
@@ -689,6 +747,41 @@ const PurchaseRequestBoard = () => {
                                      value={formData.accountingCategory}
                                      onChange={(selectedValue) => setFormData({ ...formData, accountingCategory: selectedValue })}
                                   />
+                                  {/* --- ▼▼▼ 新增區塊開始 ▼▼▼ --- */}
+<div className="mt-4 pt-4 border-t border-gray-200">
+  <div className="flex items-center">
+    <input
+      id="isAlreadyPurchased"
+      type="checkbox"
+      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+      checked={formData.isAlreadyPurchased}
+      onChange={(e) => setFormData({ ...formData, isAlreadyPurchased: e.target.checked, purchaseAmount: '' })} // 勾選時清空金額
+    />
+    <label htmlFor="isAlreadyPurchased" className="ml-3 block text-sm font-medium text-gray-800">
+      我已購買此項目 (直接登記為「已購買」)
+    </label>
+  </div>
+
+  {/* 當 isAlreadyPurchased 為 true 時，才顯示此欄位 */}
+  {formData.isAlreadyPurchased && (
+    <div className="mt-4">
+      <label htmlFor="formPurchaseAmount" className="block text-sm font-medium text-gray-700 mb-2">
+        購買總金額 (NT$)*
+      </label>
+      <input
+        id="formPurchaseAmount"
+        type="number"
+        value={formData.purchaseAmount}
+        onChange={(e) => setFormData({ ...formData, purchaseAmount: e.target.value })}
+        placeholder="請輸入購買總金額..."
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        required
+      />
+    </div>
+  )}
+</div>
+{/* --- ▲▲▲ 新增區塊結束 ▲▲▲ --- */}
+
                                     <div className="flex gap-3 pt-4"> <button type="button" onClick={() => {setShowModal(false); setSubmitError(null);}} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isSubmittingRequest}> 取消 </button> <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isSubmittingRequest}> {isSubmittingRequest && <SpinnerIcon />} {isSubmittingRequest ? '提交中...' : '提交需求'} </button> </div> </div> </div> </div> )}
         {showPurchaseModal && ( <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"> <div className="bg-white rounded-lg shadow-xl w-full max-w-md"> <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center"> <h2 className="text-lg font-semibold">確認購買</h2> <button onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors"> <X size={20} /> </button> </div> <div className="p-6"> {updateError && <p className="text-red-500 text-sm mb-3 bg-red-100 p-2 rounded text-center">{updateError}</p>} <p className="text-gray-700 mb-4"> 請輸入購買金額與購買人以完成採購： </p> <div className="mb-4"> <label htmlFor="purchaseAmount" className="block text-sm font-medium text-gray-700 mb-2"> 購買金額 (NT$)* </label> <input id="purchaseAmount" type="number" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="請輸入金額..." min="0" step="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="mb-6"> <label htmlFor="purchaserName" className="block text-sm font-medium text-gray-700 mb-2"> 購買人* </label> <input id="purchaserName" type="text" value={purchaserNameInput} onChange={(e) => setPurchaserNameInput(e.target.value)} placeholder="請輸入購買人姓名..." className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" /> </div> <div className="flex gap-3"> <button type="button" onClick={() => { setShowPurchaseModal(false); setUpdateError(null); setSelectedRequestId(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-4 rounded-lg transition-colors" disabled={isUpdatingRequest}> 取消 </button> <button type="button" onClick={confirmPurchase} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2" disabled={isUpdatingRequest}> {isUpdatingRequest && <SpinnerIcon />} {isUpdatingRequest ? '處理中...' : '確認購買'} </button> </div> </div> </div> </div> )}
 
