@@ -149,6 +149,7 @@ const PurchaseRequestBoard = () => {
           requestDate: p.createdAt,
           purchaseDate: p.purchaseDate,
           purchaserName: p.purchaserName,
+          purchaserId: p.purchaserId, // <-- 確保 purchaserId 被正確映射
           accountingCategory: p.accountingCategory
         })));
       } else {
@@ -850,7 +851,7 @@ const PurchaseRequestBoard = () => {
                   title="將勾選的項目合併成一張轉帳傳票"
                 >
                   <Download size={18} />
-                  匯出選中傳票
+                  匯出選中傳票ＰＤＦ
                 </button>
                 <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV">
                   <Download size={18} />
