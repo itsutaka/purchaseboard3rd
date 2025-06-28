@@ -458,13 +458,43 @@ const PurchaseRequestBoard = () => {
   }), [filteredRequests, sortBy]);
 
   const filteredPurchaseRecords = useMemo(() => {
+    // 修正日期篩選邏輯，透過將日期轉換為 UTC 時間來避免時區問題
+    let sDate = null;
+    if (filterStartDate) {
+      try {
+        // 將 YYYY-MM-DD 輸入視為 UTC 日期的開始
+        const temp = new Date(filterStartDate + 'T00:00:00.000Z');
+        if (!isNaN(temp.getTime())) sDate = temp;
+      } catch (e) { sDate = null; }
+    }
+
+    let eDate = null;
+    if (filterEndDate) {
+      try {
+        // 將 YYYY-MM-DD 輸入視為 UTC 日期的結束
+        const temp = new Date(filterEndDate + 'T23:59:59.999Z');
+        if (!isNaN(temp.getTime())) eDate = temp;
+      } catch (e) { eDate = null; }
+    }
+
     return purchaseRecords.filter(record => {
-      const matchesPurchaser = filterPurchaserName ? record.purchaserName?.toLowerCase().includes(filterPurchaserName.toLowerCase()) : true;
-      let Rdate = null; try { Rdate = new Date(record.purchaseDate); if(isNaN(Rdate.getTime())) Rdate = null; } catch (e) { Rdate = null; }
-      let Sdate = null; try { Sdate = new Date(filterStartDate); if(isNaN(Sdate.getTime())) Sdate = null; } catch (e) { Sdate = null; }
-      let Edate = null; try { Edate = new Date(filterEndDate); if(isNaN(Edate.getTime())) Edate = null; } catch (e) { Edate = null; }
-      const matchesStartDate = Sdate && Rdate ? Rdate >= Sdate : true;
-      const matchesEndDate = Edate && Rdate ? Rdate <= Edate : true;
+      const matchesPurchaser = filterPurchaserName 
+        ? record.purchaserName?.toLowerCase().includes(filterPurchaserName.toLowerCase()) 
+        : true;
+
+      if (!record.purchaseDate) return false;
+
+      let rDate = null;
+      try {
+        rDate = new Date(record.purchaseDate);
+        if (isNaN(rDate.getTime())) rDate = null;
+      } catch (e) { rDate = null; }
+      
+      if (!rDate) return false;
+
+      const matchesStartDate = sDate ? rDate >= sDate : true;
+      const matchesEndDate = eDate ? rDate <= eDate : true;
+
       return matchesPurchaser && matchesStartDate && matchesEndDate;
     });
   }, [purchaseRecords, filterPurchaserName, filterStartDate, filterEndDate]);
