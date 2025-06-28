@@ -78,6 +78,8 @@ const PurchaseRequestBoard = () => {
   const [filterPurchaserName, setFilterPurchaserName] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  const [filterPurchaserUid, setFilterPurchaserUid] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -86,6 +88,24 @@ const PurchaseRequestBoard = () => {
     isAlreadyPurchased: false, // <-- 新增：是否已購買的旗標
     purchaseAmount: '',       // <-- 新增：購買金額
   });
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (showRecordsModal && currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          const response = await axios.get('/api/users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          setAllUsers(response.data);
+        } catch (error) {
+          console.error('Error fetching users:', error);
+          // Optionally, set an error state to show a message to the user
+        }
+      }
+    };
+    fetchUsers();
+  }, [showRecordsModal, currentUser]);
 
   const statusLabels = {
     'pending': { text: '待購買', color: 'bg-yellow-100 text-yellow-800' },
@@ -478,8 +498,8 @@ const PurchaseRequestBoard = () => {
     }
 
     return purchaseRecords.filter(record => {
-      const matchesPurchaser = filterPurchaserName 
-        ? record.purchaserName?.toLowerCase().includes(filterPurchaserName.toLowerCase()) 
+      const matchesPurchaser = filterPurchaserUid
+        ? record.purchaserId === filterPurchaserUid
         : true;
 
       if (!record.purchaseDate) return false;
@@ -849,7 +869,17 @@ const PurchaseRequestBoard = () => {
                   {/* ... (Filter inputs remain the same) ... */}
                   <div>
                     <label htmlFor="filterPurchaser" className="block text-sm font-medium text-gray-700 mb-1">購買人</label>
-                    <input id="filterPurchaser" type="text" placeholder="依購買人篩選..." value={filterPurchaserName} onChange={(e) => setFilterPurchaserName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <select 
+                      id="filterPurchaser" 
+                      value={filterPurchaserUid} 
+                      onChange={(e) => setFilterPurchaserUid(e.target.value)} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="">所有購買人</option>
+                      {allUsers.map(user => (
+                        <option key={user.uid} value={user.uid}>{user.displayName}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="filterSDate" className="block text-sm font-medium text-gray-700 mb-1">購買日期 (起)</label>

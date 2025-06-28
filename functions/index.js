@@ -68,6 +68,23 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'UP', message: 'Server is healthy' });
 });
 
+// --- Users API Endpoint ---
+
+// GET /api/users (Get All Users) - Protected
+app.get('/api/users', verifyFirebaseToken, async (req, res) => {
+  try {
+    const listUsersResult = await admin.auth().listUsers();
+    const users = listUsersResult.users.map(userRecord => ({
+      uid: userRecord.uid,
+      displayName: userRecord.displayName || 'N/A',
+    }));
+    res.status(200).json(users);
+  } catch (error) {
+    logger.error('Error listing users:', error);
+    res.status(500).json({ message: 'Error listing users', error: error.message });
+  }
+});
+
 // --- Requirements API Endpoints ---
 
 // POST /api/requirements (Create) - Protected
