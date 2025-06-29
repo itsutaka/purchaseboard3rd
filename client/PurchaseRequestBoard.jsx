@@ -842,9 +842,8 @@ const PurchaseRequestBoard = () => {
       {showRecordsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <div className="bg-green-500 text-white p-4 rounded-t-lg flex justify-between items-center">
-              <h2 className="text-lg font-semibold">購買記錄</h2>
-              <div className="flex items-center gap-3">
+            <div className="bg-green-500 text-white py-4 pr-3 pl-4 rounded-t-lg flex justify-between items-center">
+              <div className="flex items-center gap-3 mr-10">
                 <button
                   onClick={handleBatchExport}
                   disabled={selectedRecordIds.size === 0}
@@ -852,14 +851,16 @@ const PurchaseRequestBoard = () => {
                   title="將勾選的項目合併成一張轉帳傳票"
                 >
                   <Download size={18} />
-                  匯出選中傳票
+                  匯出選中傳票 PDF
                 </button>
                 <button onClick={exportPurchaseRecordsToCSV} className="flex items-center gap-2 bg-white text-green-700 hover:bg-gray-100 py-2 px-3 rounded-md text-sm font-medium transition-colors" title="匯出目前篩選的記錄為 CSV">
                   <Download size={18} />
                   匯出篩選結果 CSV
                 </button>
+                </div>
+              <div> {/* 將關閉按鈕移到這個新的 div 內 */}
                 <button onClick={() => setShowRecordsModal(false)} className="text-white hover:bg-green-600 p-1 rounded-full transition-colors" title="關閉">
-                  <X size={20} />
+                  <X size={30} />
                 </button>
               </div>
             </div>
@@ -902,17 +903,16 @@ const PurchaseRequestBoard = () => {
               ) : (
                 <>
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center gap-2 text-green-700 mb-2">
-                          <DollarSign size={20} />
-                          <span className="font-semibold">篩選結果總計：NT$ {filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span>
-                        </div>
-                        <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆符合條件的紀錄</p>
-                      </div>
+                  <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <label htmlFor="select-all-records" className="text-sm font-medium text-gray-700">全選</label>
                         <input id="select-all-records" type="checkbox" className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ref={selectAllCheckboxRef} checked={isAllSelected} onChange={handleSelectAll} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-green-700 mb-2">
+                          <span className="font-semibold">篩選總計：NT${filteredPurchaseRecords.reduce((total, record) => total + (record.purchaseAmount || 0), 0).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm text-green-600">共 {filteredPurchaseRecords.length} 筆符合條件的紀錄</p>
                       </div>
                     </div>
                     {/* --- 這是新增的已選項目統計區塊 --- */}
@@ -923,7 +923,7 @@ const PurchaseRequestBoard = () => {
                           <div>
                             <div className="flex items-center gap-2 text-blue-700 font-semibold">
                               <CheckSquare size={20} />
-                              <span>已勾選項目總計：NT$ {selectedRecordsSummary.totalAmount.toLocaleString()}</span>
+                              <span>已勾選總計：NT${selectedRecordsSummary.totalAmount.toLocaleString()}</span>
                             </div>
                             <p className="text-sm text-blue-600 mt-1">共勾選 {selectedRecordsSummary.count} 筆紀錄</p>
                           </div>
