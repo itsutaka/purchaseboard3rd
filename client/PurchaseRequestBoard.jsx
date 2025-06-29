@@ -518,7 +518,7 @@ const PurchaseRequestBoard = () => {
 
       return matchesPurchaser && matchesStartDate && matchesEndDate;
     });
-  }, [purchaseRecords, filterPurchaserName, filterStartDate, filterEndDate]);
+  }, [purchaseRecords, filterPurchaserUid, filterStartDate, filterEndDate]);
 
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
