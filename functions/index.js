@@ -27,7 +27,21 @@ const getUserDisplayName = async (uid) => {
   }
 };
 
-
+// Helper function to get user details (name and email)
+const getUserDetails = async (uid) => {
+  if (!uid) return { name: null, email: null };
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    return {
+      name: userRecord.displayName,
+      email: userRecord.email,
+    };
+  } catch (error) {
+    // 如果因為找不到用戶等原因出錯，回傳 null，避免整個 API 崩潰
+    logger.warn('Could not fetch user data for uid:', uid, error.code);
+    return { name: null, email: null };
+  }
+};
 // Authentication Middleware
 const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -413,49 +427,100 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
 // =================================================================
 
 // GET all tithing tasks
-app.get("/api/tithe-tasks", verifyFirebaseToken, async (req, res) => {
+app.get('/api/tithe-tasks', verifyFirebaseToken, async (req, res) => {
   try {
-    // Correct admin SDK syntax: chain methods directly on the collection reference
-    const querySnapshot = await db.collection('tithe')
-                                  .orderBy('calculationTimestamp', 'desc')
-                                  .get();
-                                  
-    const tasks = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      // Ensure timestamps are sent in a consistent format (ISO string)
-      calculationTimestamp: doc.data().calculationTimestamp?.toDate().toISOString(),
-    }));
+    const snapshot = await db.collection('tithe').orderBy('calculationTimestamp', 'desc').get();
+    
+    // ✨ 所有需要的名稱都已存在於文件中，無需額外查詢
+    const tasks = snapshot.docs.map(doc => {
+      const taskData = doc.data();
+      return {
+        id: doc.id,
+        ...taskData,
+        // 確保時間戳總是 ISO string 格式
+        calculationTimestamp: taskData.calculationTimestamp?.toDate().toISOString(),
+      };
+    });
+    
     res.status(200).json(tasks);
   } catch (error) {
-    logger.error("Error fetching tithing tasks:", error);
-    res.status(500).send("Failed to fetch tithing tasks.");
+    logger.error('Error getting tithing tasks:', error);
+    res.status(500).json({ message: 'Error getting tithing tasks', error: error.message });
   }
 });
 
 // POST a new tithing task
-app.post("/api/tithe-tasks", verifyFirebaseToken, async (req, res) => {
+app.post('/api/tithe-tasks', verifyFirebaseToken, async (req, res) => {
   try {
-    const newTaskData = {
-      calculationTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-      treasurerUid: req.user.uid,
-      status: 'in_progress',
-    };
-    // Correct admin SDK syntax: use the .add() method on the collection reference
-    const newTaskDocRef = await db.collection('tithe').add(newTaskData);
-    
-    const newDoc = await newTaskDocRef.get();
-    const newDocData = newDoc.data();
+    const { uid, name, email } = req.user; // 從已驗證的 token 中取得司庫資訊
+    const { financeStaffUid } = req.body; // 從請求的 body 中獲取財務同工的 UID
 
-    res.status(201).json({
-      id: newDoc.id,
-      ...newDocData,
-      // Ensure the timestamp is converted for immediate use on the frontend
-      calculationTimestamp: newDocData.calculationTimestamp?.toDate().toISOString(),
-    });
+    if (!financeStaffUid) {
+      return res.status(400).json({ message: 'Finance staff UID is required.' });
+    }
+
+    // ✨ 步驟 1: 即時查詢財務同工的最新 displayName
+    const financeStaffUserRecord = await admin.auth().getUser(financeStaffUid);
+    const financeStaffName = financeStaffUserRecord.displayName || financeStaffUserRecord.email || 'N/A';
+    
+    // ✨ 步驟 2: 將 UID 和 Name 快照一起寫入資料庫
+    const newTaskData = {
+      treasurerUid: uid,
+      treasurerName: name || email || 'Anonymous', // 寫入司庫名稱快照
+      financeStaffUid: financeStaffUid,
+      financeStaffName: financeStaffName || email || 'Anonymous', // 寫入財務同工名稱快照
+      status: 'in-progress',
+      calculationTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await db.collection('tithe').add(newTaskData);
+    
+    const createdTask = { 
+      id: docRef.id, 
+      ...newTaskData,
+      calculationTimestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    res.status(201).json(createdTask);
   } catch (error) {
-    logger.error("Error creating new tithing task:", error);
-    res.status(500).send("Failed to create new tithing task.");
+    logger.error('Error creating tithing task:', error);
+    res.status(500).json({ message: 'Error creating tithing task', error: error.message });
+  }
+});
+
+app.get('/api/finance-staff', verifyFirebaseToken, async (req, res) => {
+  try {
+    const staffQuery = db.collection('users').where('roles', 'array-contains-any', ['finance_staff', 'treasurer']);
+    const staffSnapshot = await staffQuery.get();
+
+    if (staffSnapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const staffUids = staffSnapshot.docs.map(doc => doc.id);
+    
+    // ✨ 批次查詢 Firebase Auth
+    const userRecordsResult = await admin.auth().getUsers(staffUids.map(uid => ({ uid })));
+
+    // ✨ 建立最終回傳列表，只包含成功找到的使用者
+    const staffList = userRecordsResult.users.map(user => ({
+      uid: user.uid,
+      displayName: user.displayName || user.email || 'N/A',
+    }));
+
+    // (可選，但建議) 記錄下哪些 UID 找不到，方便除錯
+    if (userRecordsResult.notFound.length > 0) {
+        logger.warn('The following UIDs were not found in Firebase Auth:', userRecordsResult.notFound.map(user => user.uid));
+    }
+    
+    res.status(200).json(staffList);
+
+  } catch (error) {
+    // 針對非預期的錯誤進行記錄
+    logger.error('Error fetching finance staff list:', error);
+    res.status(500).json({ message: 'An unexpected error occurred while fetching the staff list.', error: error.message });
   }
 });
 

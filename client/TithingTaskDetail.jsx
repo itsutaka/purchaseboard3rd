@@ -108,7 +108,7 @@ const TithingTaskDetail = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              奉獻計算任務詳情
+            任務詳情
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
               <div>
@@ -145,7 +145,7 @@ const TithingTaskDetail = () => {
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-gray-400"
               >
                 <Download size={20} />
-                {isExporting ? '匯出中...' : '匯出 PDF 報告'}
+                {isExporting ? '匯出中...' : '匯出PDF'}
               </button>
             )}
           </div>
