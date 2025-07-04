@@ -2,22 +2,44 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Requirements:
-    // - Anyone can read requirements.
-    // - Authenticated users can create requirements (function already ensures userId matches).
-    // - Users can only update or delete their own requirements.
+
+    // Helper function to get user data
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Helper function to check if a user has a specific role
+    function hasRole(role) {
+      return request.auth != null && getUserData(request.auth.uid).roles.hasAny([role]);
+    }
+
+    // Rules for the 'users' collection itself
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Admins can read any user profile
+      allow read: if hasRole('admin');
+      // Only admins can create, update, or delete user profiles/roles
+      allow write: if hasRole('admin');
+    }
+
+    // Requirements rules (existing)
     match /requirements/{requirementId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // TODO: Add rules for a 'comments' collection if implemented.
-    // Example for comments (assuming comments are linked to requirements and users):
-    // match /comments/{commentId} {
-    //   allow read: if true; // Or perhaps only if user can read the requirement
-    //   allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    //   allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    // }
+    // Tithing Subsystem Rules (Advanced) - TEMPORARILY OPEN FOR DEBUGGING
+    match /tithe/{taskId} {
+      // Temporarily allow all access for debugging
+      allow read, write: if true;
+
+      // Rules for the 'dedications' subcollection
+      match /dedications/{dedicationId} {
+        // Temporarily allow all access for debugging
+        allow read, write: if true;
+      }
+    }
   }
 }

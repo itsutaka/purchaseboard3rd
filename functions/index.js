@@ -108,7 +108,7 @@ app.post('/api/requirements', verifyFirebaseToken, async (req, res) => {
       requesterName: req.user.name || req.user.email || 'Anonymous',
     };
 
-    // ▼▼▼ 核心修改：根據傳入的 status 決定如何處理 ▼▼▼
+    // ▼▼▼ 核心修改：根據傳入的 status 決���如何處理 ▼▼▼
     if (status === 'purchased') {
       // 如果是直接建立 "已購買" 狀態
       if (typeof purchaseAmount !== 'number' || purchaseAmount <= 0) {
@@ -408,6 +408,63 @@ app.delete('/api/requirements/:reqId/comments/:commentId', verifyFirebaseToken, 
   }
 });
 
+// =================================================================
+// Tithing Tasks API Endpoints (CORRECTED SYNTAX)
+// =================================================================
+
+// GET all tithing tasks
+app.get("/api/tithe-tasks", verifyFirebaseToken, async (req, res) => {
+  try {
+    // Correct admin SDK syntax: chain methods directly on the collection reference
+    const querySnapshot = await db.collection('tithe')
+                                  .orderBy('calculationTimestamp', 'desc')
+                                  .get();
+                                  
+    const tasks = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      // Ensure timestamps are sent in a consistent format (ISO string)
+      calculationTimestamp: doc.data().calculationTimestamp?.toDate().toISOString(),
+    }));
+    res.status(200).json(tasks);
+  } catch (error) {
+    logger.error("Error fetching tithing tasks:", error);
+    res.status(500).send("Failed to fetch tithing tasks.");
+  }
+});
+
+// POST a new tithing task
+app.post("/api/tithe-tasks", verifyFirebaseToken, async (req, res) => {
+  try {
+    const newTaskData = {
+      calculationTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      treasurerUid: req.user.uid,
+      status: 'in_progress',
+    };
+    // Correct admin SDK syntax: use the .add() method on the collection reference
+    const newTaskDocRef = await db.collection('tithe').add(newTaskData);
+    
+    const newDoc = await newTaskDocRef.get();
+    const newDocData = newDoc.data();
+
+    res.status(201).json({
+      id: newDoc.id,
+      ...newDocData,
+      // Ensure the timestamp is converted for immediate use on the frontend
+      calculationTimestamp: newDocData.calculationTimestamp?.toDate().toISOString(),
+    });
+  } catch (error) {
+    logger.error("Error creating new tithing task:", error);
+    res.status(500).send("Failed to create new tithing task.");
+  }
+});
+
+
+// =================================================================
+// 只有在所有 API 路由都定義完畢後，才匯出 Express app
+// =================================================================
+
+export const api = onRequest(app); 
 // 新增：可呼叫雲端函式來獲取用戶的 displayName
 // Gen 2 syntax for onCall
 export const getUserDisplayNameCallable = onCall(async (request) => {
@@ -479,4 +536,64 @@ export const createuserprofile = functions.auth.user().onCreate(async (user) => 
 
 // Export the Express app as an HTTP function
 // Gen 2 syntax for onRequest
-export const api = onRequest(app); // You can add options here if needed, e.g., onRequest({region: 'us-central1'}, app)
+// You can add options here if needed, e.g., onRequest({region: 'us-central1'}, app)
+
+// New Cloud Function for Tithing Task Aggregation
+export const completeTithingTask = onCall(async (request) => {
+  // 1. Authentication check
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+
+  const { taskId } = request.data;
+  if (!taskId) {
+    throw new HttpsError('invalid-argument', 'The function must be called with a "taskId" argument.');
+  }
+
+  const taskRef = db.collection('tithe').doc(taskId);
+  const dedicationsRef = taskRef.collection('dedications');
+
+  try {
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists) {
+      throw new HttpsError('not-found', 'The specified task does not exist.');
+    }
+
+    // Optional: Add a role-based check here later if needed
+    // For now, we assume the frontend logic prevents unauthorized calls.
+
+    const dedicationsSnapshot = await dedicationsRef.get();
+    if (dedicationsSnapshot.empty) {
+      logger.info(`No dedications found for task ${taskId}. Marking as complete with zero amounts.`);
+    }
+
+    const summary = {
+      totalAmount: 0,
+      byCategory: {},
+    };
+
+    dedicationsSnapshot.forEach(doc => {
+      const { amount, dedicationCategory } = doc.data();
+      if (typeof amount === 'number' && dedicationCategory) {
+        summary.totalAmount += amount;
+        summary.byCategory[dedicationCategory] = (summary.byCategory[dedicationCategory] || 0) + amount;
+      }
+    });
+
+    await taskRef.update({
+      summary: summary,
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.log(`Task ${taskId} has been successfully completed and aggregated.`);
+    return { success: true, summary };
+
+  } catch (error) {
+    logger.error(`Error completing tithing task ${taskId}:`, error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError('internal', 'An unexpected error occurred while completing the task.');
+  }
+});
