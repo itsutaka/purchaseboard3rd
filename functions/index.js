@@ -492,6 +492,7 @@ app.post('/api/tithe-tasks', verifyFirebaseToken, async (req, res) => {
 
 app.get('/api/finance-staff', verifyFirebaseToken, async (req, res) => {
   try {
+    const requestingUserUid = req.user.uid; // 新增：取得請求者 UID
     const staffQuery = db.collection('users').where('roles', 'array-contains-any', ['finance_staff', 'treasurer']);
     const staffSnapshot = await staffQuery.get();
 
@@ -499,7 +500,9 @@ app.get('/api/finance-staff', verifyFirebaseToken, async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const staffUids = staffSnapshot.docs.map(doc => doc.id);
+    const staffUids = staffSnapshot.docs
+    .map(doc => doc.id)
+    .filter(uid => uid !== requestingUserUid); // 修改：過濾掉請求者自己
     
     // ✨ 批次查詢 Firebase Auth
     const userRecordsResult = await admin.auth().getUsers(staffUids.map(uid => ({ uid })));
