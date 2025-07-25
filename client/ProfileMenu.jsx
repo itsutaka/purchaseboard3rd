@@ -33,7 +33,7 @@ const ProfileMenu = () => {
 
   const isApproved = userProfile?.status === 'approved';
 
-  // 點擊外部關閉選單的 Effect
+  // 點擊外部��閉選單的 Effect
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -76,7 +76,7 @@ const ProfileMenu = () => {
       await updateUserProfile({ displayName: displayName.trim() });
       setIsEditing(false);
     } catch (err) {
-      setEditError('更新失敗，請稍後再試。');
+      setEditError('更���失敗，請稍後再試。');
     }
   };
 
@@ -102,14 +102,14 @@ const ProfileMenu = () => {
     <div className="relative" ref={menuRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)} 
-        className="flex items-center gap-2 text-base font-medium text-graphite-700 hover:text-glory-red-600 p-2 rounded-lg transition-colors border border-graphite-300"
+        className="flex items-center gap-2 text-base font-medium text-graphite-700 hover:text-glory-red-600 p-2 rounded-lg transition-colors"
       >
         <span>{getShortName(currentUser.displayName) || currentUser.email}</span>
         <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border z-10">
+        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border z-50">
           <div className="p-4 border-b">
             {isEditing ? (
               <div className="space-y-2">
@@ -128,7 +128,7 @@ const ProfileMenu = () => {
               </div>
             ) : (
               <div className="flex items-center">
-                <p className="font-semibold text-graphite-800 truncate flex-1 text-lg">{currentUser.displayName || '未設定姓名'}</p>
+                <p className="font-semibold text-graphite-800 truncate flex-1 text-lg">{currentUser.displayName || '��設定姓名'}</p>
                 <button onClick={handleEditName} className="text-graphite-500 hover:text-glory-red-600 ml-2" title="編輯姓名">
                   <Edit2 size={20} />
                 </button>
