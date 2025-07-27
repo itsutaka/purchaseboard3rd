@@ -1115,7 +1115,7 @@ const PurchaseRequestBoard = () => {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6">
         {/* ... (Header and filter UI remains the same) ... */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h1 className="text-2xl font-bold text-graphite-900 text-center sm:text-left">Purchase Board</h1>

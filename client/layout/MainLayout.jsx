@@ -5,15 +5,23 @@ import Backdrop from './Backdrop';
 import ProfileMenu from '../ProfileMenu'; // Import ProfileMenu
 
 const MainLayout = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default to closed on mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const triggerRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  // Focus trap logic remains the same
   useEffect(() => {
-    if (isSidebarOpen) {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const updateIsMobile = () => setIsMobile(mediaQuery.matches);
+    updateIsMobile();
+    mediaQuery.addEventListener('change', updateIsMobile);
+    return () => mediaQuery.removeEventListener('change', updateIsMobile);
+  }, []);
+
+  useEffect(() => {
+    if (isSidebarOpen && isMobile) {
       const focusableElements = sidebarRef.current?.querySelectorAll(
-        'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'
+        'a[href], button:not([disabled]), textarea, input, select'
       );
       if (!focusableElements || focusableElements.length === 0) return;
 
@@ -22,7 +30,6 @@ const MainLayout = ({ children }) => {
 
       const handleKeyDown = (e) => {
         if (e.key !== 'Tab') return;
-
         if (e.shiftKey) {
           if (document.activeElement === firstElement) {
             lastElement.focus();
@@ -37,39 +44,41 @@ const MainLayout = ({ children }) => {
       };
 
       document.addEventListener('keydown', handleKeyDown);
-      // Only auto-focus on mobile
-      if (window.innerWidth < 768) {
-        firstElement?.focus();
-      }
+      firstElement?.focus();
 
       return () => {
         document.removeEventListener('keydown', handleKeyDown);
-        if (window.innerWidth < 768) {
-            triggerRef.current?.focus();
-        }
       };
     }
-  }, [isSidebarOpen]);
+  }, [isSidebarOpen, isMobile]);
+
+  useEffect(() => {
+    if (!isSidebarOpen && isMobile) {
+      triggerRef.current?.focus();
+    }
+  }, [isSidebarOpen, isMobile]);
 
   return (
-    <div className="relative flex min-h-screen bg-gray-50">
-      <Sidebar ref={sidebarRef} isSidebarOpen={isSidebarOpen} />
-      
-      <div className="flex-1 flex flex-col w-0"> {/* Use flex-1 and w-0 to ensure proper content wrapping */}
-        <header className="sticky top-0 bg-white shadow-sm z-10 flex items-center justify-between p-2">
-            <div ref={triggerRef}>
-              <SidebarTrigger isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
-            </div>
-            <div className="pr-2">
-              <ProfileMenu />
-            </div>
-        </header>
-        <main className="flex-1 p-4 overflow-y-auto"> {/* Allow content to scroll */}
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="flex-shrink-0 bg-white shadow-sm z-20 flex items-center justify-between p-2">
+        <div ref={triggerRef}>
+          <SidebarTrigger isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+        </div>
+        <div className="pr-2">
+          <ProfileMenu />
+        </div>
+      </header>
+
+      {/* Main content area below header */}
+      <div className={`relative flex flex-1 overflow-hidden ${!isMobile ? 'gap-6' : ''}`}>
+        <Sidebar ref={sidebarRef} isSidebarOpen={isSidebarOpen} isMobile={isMobile} />
+        
+        <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>
-
-      {isSidebarOpen && <Backdrop onClick={() => setIsSidebarOpen(false)} />}
+      
+      {isMobile && isSidebarOpen && <Backdrop onClick={() => setIsSidebarOpen(false)} />}
     </div>
   );
 };
