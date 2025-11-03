@@ -1,6 +1,6 @@
 import React, { useState, Suspense } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import LoginModal from './LoginModal.jsx';
+import LoginModal from "./loginmodal.jsx";
 import ProfileMenu from './ProfileMenu.jsx'; 
 import { useAuth } from './AuthContext.jsx';
 import { useTheme } from './ThemeContext.jsx';
